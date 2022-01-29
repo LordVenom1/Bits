@@ -1,288 +1,347 @@
 # 555 timer
 
+# on clock pulse, all latches record their values.
+# only then, start updating
+require 'set'
+
+class Simulation
+	MAX_ITERATIONS = 10000
+	PORT_FALSE = 0
+	PORT_TRUE = 1
+	# PORT_CLOCK = 2
+
+	attr_reader :clock
+
+	def initialize()
+		@ports = Array.new(2)
+		@ports[PORT_FALSE] = false # false
+		@ports[PORT_TRUE] = true # true	
+		@components = []
+		@clock = Clock.new
+	end			
+	
+	def to_s
+		@ports.collect do |p|
+			p ? '1' : '0'
+		end.join("")
+	end
+	
+	def allocate_ports(n)
+		@ports = @ports + Array.new(n,false)		
+		(@ports.size - n...@ports.size).to_a
+	end
+	
+	def get(idx)
+		@ports[idx]
+	end
+	
+	def set(idx, value)
+		raise 'read-only' if [PORT_FALSE,PORT_TRUE].include? idx
+		raise 'out of range' if idx >= @ports.size
+		
+		if @ports[idx] != value
+			@ports[idx] = value
+			@dirty = true
+		end
+			
+		# update/cascade?
+	end
+	
+	def update(update_clock = false)
+		@dirty = true
+		
+		n = MAX_ITERATIONS
+	
+		while @dirty
+			n = n - 1
+			raise 'failure to converge' if n == 0
+			@dirty = false
+			@components.each do |c|
+				c.update
+			end
+		end	
+
+		@clock.pulse if update_clock
+	end
+	
+	def register_component(c, num_ports)
+		@components << c
+		allocate_ports(num_ports)
+	end
+	
+end
+
 class Clock
-	attr_reader :state
 	def initialize
 		@components = []
-		@state = :low
 	end
 	
 	def register(c)
 		@components << c
 	end
+
 	
-	def half_pulse
-		if @state == :low
-			pulse_high
-		else
-			pulse_low
-		end
-	end
-	
-	def full_pulse
-		half_pulse
-		half_pulse
-	end
-	
-	def pulse_high
-		@state = :high
+	def pulse
 		@components.each do |c|
-			c.pulse_high
-		end
-	end
-	
-	def pulse_low
-		@state = :low
-		@components.each do |c|
-			c.pulse_low
+			c.pulse
 		end
 	end
 end
 
-class Component
 
-	def initialize(num_inputs, num_outputs)
-		@inputs = Array.new(num_inputs, false)
-		@outputs = Array.new(num_outputs, false)
-		@labels = {}		
-		# update() call update in each child to make sure everythings setup
+class Component
+	
+	def initialize(sim, num_inputs, num_outputs, reserve = nil)
+		@sim = sim
+		@num_inputs = num_inputs
+		@ports = (Array.new(num_inputs, Simulation::PORT_FALSE)) + @sim.register_component(self, reserve || num_outputs)		
 	end
 	
 	def update
 		raise 'must override'
 	end
-	
-	def pulse_high
-	end
-	def pulse_low
-	end
-	
-	def set_input(n, val)
-		raise 'bad input' if n > @inputs.size
-		# could look up n in labels if a symbol		
-		@inputs[n] = val
-		update
-		nil
+		
+	def pulse
 	end
 	
 	def to_s
-		@inputs.collect do |v| 
-			v ? '0' : '1'
-		end.join("") + ":" +
-		@outputs.collect do |v| 
-			v ? '0' : '1'
+		self.class.to_s + ":" + (0...@num_inputs).collect do |idx|
+			@ports[idx]
+		end.join("") + ":" + (@num_inputs...@ports.size).collect do |idx|
+			@ports[idx]
 		end.join("")
 	end
 	
-	def set_inputs(values)				
-		values = [values] if values.class != Array #put into array if not already
-		raise '# of inputs doesnt match' unless @inputs.size == values.size		
+	def	set_input_values(vals)
+		raise 'bad set' unless vals.size == @num_inputs
+		(0...vals.size).each do |idx|
+			set_input_pointer(idx, vals[idx] ? Simulation::PORT_TRUE : Simulation::PORT_FALSE)
+		end
+	end
+	
+	def get_output_values		
+		(@num_inputs...@ports.size).collect do |p|				
+			@sim.get(@ports[p])
+		end
+	end
 		
-		@inputs = values.collect do |v|
-			raise 'bad value' unless [true,false,0,1].include? v
-			if v == 0
-				false
-			elsif v == 1
-				true
-			else
-				v
+	def get_output_pointers
+		(@num_inputs...@ports.size).collect do |p|				
+			@ports[p]
+		end
+	end
+	
+	def set_input_pointer(n, idx)
+		#validate we're not changing an output?
+		raise 'out of range' if n >= @ports.size
+		@ports[n] = idx		
+	end
+	
+	def self.label_helper(labels, num_inputs)
+		labels.each_with_index do |label,idx|
+			define_method(label) do 
+				@sim.get(@ports[idx])
 			end
-		end		
-		update
-	end
-	
-	
-	def get_output(n)
-		raise 'out of range' if n > @outputs.size
-		@outputs[n]
-	end
-	
-	def outputs
-		@outputs.to_enum # to_enum prevents modification without making a copy
-	end
-	
-	def method_missing(*vals)
-		target = vals.first
-		val = vals[1]
-		
-		if target.to_s.end_with? "="			
-			port = @labels[target.to_s.chomp('=').to_sym]
-			super unless port # method missing
-			if port.first == :input 
-				set_input(port.last, val)				
-			elsif port.first == :output
-				raise 'can''t set output directly'
-			else
-				raise 'not sure what to do with port type: ' + port.first
-			end
-		else
-			port = @labels[target]
-			super unless port # method missing
-			if port.first == :input
-				return @inputs[port.last]
-			else
-				return @outputs[port.last]			
+			
+			if idx < num_inputs then
+				define_method(label.to_s + "=") do |val|
+					set_input_pointer(@ports[idx], val ? Simulation::PORT_TRUE : Simulation::PORT_FALSE)
+				end
 			end
 		end
 	end
-end
-
-class DLatch < Component
-	def initialize()
-		super(2,1)
-		@labels[:set] = [:input, 0]		
-		@labels[:enable] = [:input, 1]
-		@labels[:value] = [:output, 0]		
-		# clk.register(self)
-		# @clk = clk		
-		
-		update
-	end 
 	
-	def pulse_high
-		# if @input[0] and not @input[1]
-			# @output[0] = true
-			# @output[1] = false
-		# elsif @input[1] and not @input[0]
-			# @output[0] = false
-			# @output[1] = true
-		# elsif @input[1] and @input[1]
-			# raise 'undefined behavior from sr latch'
+	# def to_s
+		# @inputs.collect do |v| 
+			# v ? '0' : '1'
+		# end.join("") + ":" +
+		# @outputs.collect do |v| 
+			# v ? '0' : '1'
+		# end.join("")
+	# end
+	
+	# def set_inputs(values)				
+		# values = [values] if values.class != Array #put into array if not already
+		# raise '# of inputs doesnt match' unless @inputs.size == values.size		
+		
+		# @inputs = values.collect do |v|
+			# raise 'bad value' unless [true,false,0,1].include? v
+			# if v == 0
+				# false
+			# elsif v == 1
+				# true
+			# else
+				# v
+			# end
+		# end		
+		# update
+	# end
+	
+	
+	# def get_output(n)
+		# raise 'out of range' if n > @outputs.size
+		# @outputs[n]
+	# end
+	
+	# def outputs
+		# @outputs.to_enum # to_enum prevents modification without making a copy
+	# end
+	
+	# def method_missing(*vals)
+		# target = vals.first
+		# val = vals[1]
+		
+		# if target.to_s.end_with? "="			
+			# port = @labels[target.to_s.chomp('=').to_sym]
+			# super unless port # method missing
+			# if port.first == :input 
+				# set_input(port.last, val)				
+			# elsif port.first == :output
+				# raise 'can''t set output directly'
+			# else
+				# raise 'not sure what to do with port type: ' + port.first
+			# end
+		# else
+			# port = @labels[target]
+			# super unless port # method missing
+			# if port.first == :input
+				# return @inputs[port.last]
+			# else
+				# return @outputs[port.last]			
+			# end
 		# end
-	end 
-	
-	def pulse_low
-	end
-	
-	def update
-		# only set value if 'enable' is on
-		if @inputs[1]
-			@outputs[0] = @inputs[0]
-		end			
-	end	
-end
-
-class DFlipFlop < Component
-	def initialize(clk)
-		super(1,1)
-		@labels[:set] = [:input, 0]				
-		@labels[:value] = [:output, 0]		
-		clk.register(self)		
-		
-		update
-	end 
-	
-	# lock in the input on clock high
-	def pulse_high			
-		@outputs[0] = @inputs[0]				
-	end 
-	
-	def pulse_low
-	end
-	
-	def update		
-	end	
-end
-
-class NotGate < Component
-	def initialize()
-		super(1,1)
-		@labels[:a] = [:input, 0]		
-		@labels[:x] = [:output, 0]
-		update
-	end 
-	
-	def update		
-		@outputs[0] = not(@inputs[0])
-	end	
+	# end
 end
 
 class OrGate < Component
-	def initialize()
-		super(2,1)
-		@labels[:a] = [:input, 0]
-		@labels[:b] = [:input, 1]
-		@labels[:x] = [:output, 0]
-		update
+	def initialize(sim)
+		super(sim,2,1)
 	end 
 	
 	def update		
-		@outputs[0] = @inputs[0] | @inputs[1]		
-	end	
-end
-
-class NorGate < Component
-	def initialize()
-		super(2,1)
-		@labels[:a] = [:input, 0]
-		@labels[:b] = [:input, 1]
-		@labels[:x] = [:output, 0]
-		update
-	end 
+		@sim.set(@ports[2], a | b)
+	end
 	
-	def update		
-		@outputs[0] = not(@inputs[0] | @inputs[1]		)
-	end	
+	label_helper([:a,:b,:x], 2)
 end
 
 class AndGate < Component
-	def initialize()
-		super(2,1)
-		@labels[:a] = [:input, 0]
-		@labels[:b] = [:input, 1]
-		@labels[:x] = [:output, 0]
-		update
+	def initialize(sim)
+		super(sim,2,1)
+	end 
+	
+	def update				
+		@sim.set(@ports[2], a & b)
 	end
+	
+	label_helper([:a,:b,:x], 2)
+end
+
+class NorGate < Component
+	def initialize(sim)
+		super(sim,2,1)
+	end 
+	
 	def update		
-		@outputs[0] = @inputs[0] & @inputs[1]		
+		@sim.set(@ports[2], !(a | b))
 	end
+	
+	label_helper([:a,:b,:x], 2)
 end
 
 class XorGate < Component
-	def initialize()
-		super(2,1)
-		@labels[:a] = [:input, 0]
-		@labels[:b] = [:input, 1]
-		@labels[:x] = [:output, 0]
-		update
-	end
+	def initialize(sim)
+		super(sim,2,1)
+	end 
+	
 	def update		
-		@outputs[0] = @inputs[0] ^ @inputs[1]		
+		@sim.set(@ports[2], (a || b) & (!(a & b)))
 	end
+	
+	label_helper([:a,:b,:x], 2)
 end
 
 class NandGate < Component
-	def initialize()
-		super(2,1)
-		@labels[:a] = [:input, 0]
-		@labels[:b] = [:input, 1]
-		@labels[:x] = [:output, 0]
-		update
-	end
+	def initialize(sim)
+		super(sim,2,1)
+	end 
+	
 	def update		
-		@outputs[0] = not(@inputs[0] & @inputs[1])
+		@sim.set(@ports[2], !(a & b))
 	end
+	
+	label_helper([:a,:b,:x], 2)
 end
 
+class NotGate < Component
+	def initialize(sim)
+		super(sim,1,1)
+	end 
+	
+	def update			
+		@sim.set(@ports[1], not(a))		
+	end
+	
+	label_helper([:a,:x], 1)
+end
+
+## not a real component
 class And4Gate < Component
-	def initialize()		
-		super(4,1)
-		@labels[:a] = [:input, 0]
-		@labels[:b] = [:input, 1]
-		@labels[:c] = [:input, 2]
-		@labels[:d] = [:input, 3]
-		@labels[:x] = [:output, 0]		
+	 def initialize(sim)		
+		super(sim,4,1,0)		
 		@comps = {}
-		@comps[:a1] = AndGate.new
-		@comps[:a2] = AndGate.new
-		@comps[:ac] = AndGate.new		
-		update
+		@comps[:a1] = AndGate.new(sim)		
+		@comps[:a2] = AndGate.new(sim)
+		@comps[:ac] = AndGate.new(sim)
+		@comps[:ac].set_input_pointer(0,@comps[:a1].get_output_pointers[0])
+		@comps[:ac].set_input_pointer(1,@comps[:a2].get_output_pointers[0])
+		@ports[4] = @comps[:ac].get_output_pointers[0]
+	end
+	
+	def set_input_pointer(n, idx)
+		case n
+			when 0
+				@comps[:a1].set_input_pointer(0, idx)
+			when 1
+				@comps[:a1].set_input_pointer(1, idx)
+			when 2
+				@comps[:a2].set_input_pointer(0, idx)
+			when 3
+				@comps[:a2].set_input_pointer(1, idx)
+		end	
 	end
 	
 	def update
-		@comps[:a1].set_inputs([@inputs[0],@inputs[1]])
-		@comps[:a2].set_inputs([@inputs[2],@inputs[3]])
-		@comps[:ac].set_inputs([@comps[:a1].get_output(0),@comps[:a2].get_output(0)])
-		@outputs[0] = @comps[:ac].get_output(0)
 	end
+	
+	label_helper([:a,:b,:c,:d,:x], 4)
+end
+
+class BufferGate < Component
+	def initialize(sim)
+		super(sim,1,1)
+	end 
+	
+	def update			
+		@sim.set(@ports[1], a)		
+	end
+	
+	label_helper([:a,:x], 1)
+end
+		
+
+ class DataLatch < Component
+	def initialize(sim)
+		super(sim,1,1)
+		sim.clock.register(self)
+	end 
+	
+	label_helper([:set,:value], 1)
+	
+	def pulse
+		@sim.set(@ports[1], set)
+	end
+	
+	def update		
+	end	
 end
