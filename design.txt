@@ -1,0 +1,19 @@
+build an N bit pc from scratch
+really make it dynamic?
+
+how to run efficiently?
+	each 'component' should have multiple levels of operation?  'compile' low level components into functions/lambdas?
+
+how to label, hook-up everything?
+
+simulate a physical breadboard?
+
+clock!
+
+git
+tests
+
+
+how to avoid magic?  cna we use wires instead of grabbing and setting values between outer shell and inner components
+could give each input a global id...
+so 'magic' only happens at the lower level - physical devices
