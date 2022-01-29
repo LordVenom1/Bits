@@ -104,12 +104,12 @@ class Component
 	def pulse
 	end
 	
-	def to_s
-		self.class.to_s + ":" + (0...@num_inputs).collect do |idx|
-			@ports[idx]
-		end.join("") + ":" + (@num_inputs...@ports.size).collect do |idx|
-			@ports[idx]
-		end.join("")
+	def to_s		
+		self.class.to_s + ":" + (0...@num_inputs).collect do |idx|			
+			@ports[idx].to_s + (@sim.get(@ports[idx]) ? 'T' : 'F')
+		end.join(",") + ":" + (@num_inputs...@ports.size).collect do |idx|
+			@ports[idx].to_s + (@sim.get(@ports[idx]) ? 'T' : 'F')
+		end.join(",")
 	end
 	
 	def	set_input_values(vals)
@@ -344,4 +344,182 @@ end
 	
 	def update		
 	end	
+end
+
+class FullAdderSub8 < Component
+	 def initialize(sim)		
+		super(sim,17,9,0)	# input: a + b, 17th = sub  output: 8 digits plus carry
+		@comps = {}
+		@comps[:fa1] = FullAdder.new(sim)		
+		@comps[:fa2] = FullAdder.new(sim)
+		@comps[:fa3] = FullAdder.new(sim)
+		@comps[:fa4] = FullAdder.new(sim)
+		@comps[:fa5] = FullAdder.new(sim)
+		@comps[:fa6] = FullAdder.new(sim)
+		@comps[:fa7] = FullAdder.new(sim)
+		@comps[:fa8] = FullAdder.new(sim)
+		
+		@comps[:x1] = XorGate.new(sim)
+		@comps[:x2] = XorGate.new(sim)
+		@comps[:x3] = XorGate.new(sim)
+		@comps[:x4] = XorGate.new(sim)
+		@comps[:x5] = XorGate.new(sim)
+		@comps[:x6] = XorGate.new(sim)
+		@comps[:x7] = XorGate.new(sim)
+		@comps[:x8] = XorGate.new(sim)
+		
+		@comps[:fa1].set_input_pointer(1, @comps[:x1].get_output_pointers[0])				
+		@comps[:fa2].set_input_pointer(1, @comps[:x2].get_output_pointers[0])
+		@comps[:fa3].set_input_pointer(1, @comps[:x3].get_output_pointers[0])				
+		@comps[:fa4].set_input_pointer(1, @comps[:x4].get_output_pointers[0])				
+		@comps[:fa5].set_input_pointer(1, @comps[:x5].get_output_pointers[0])				
+		@comps[:fa6].set_input_pointer(1, @comps[:x6].get_output_pointers[0])				
+		@comps[:fa7].set_input_pointer(1, @comps[:x7].get_output_pointers[0])				
+		@comps[:fa8].set_input_pointer(1, @comps[:x8].get_output_pointers[0])	
+			
+		@comps[:fa2].set_input_pointer(2, @comps[:fa1].get_output_pointers[1])
+		@comps[:fa3].set_input_pointer(2, @comps[:fa2].get_output_pointers[1])
+		@comps[:fa4].set_input_pointer(2, @comps[:fa3].get_output_pointers[1])
+		@comps[:fa5].set_input_pointer(2, @comps[:fa4].get_output_pointers[1])
+		@comps[:fa6].set_input_pointer(2, @comps[:fa5].get_output_pointers[1])
+		@comps[:fa7].set_input_pointer(2, @comps[:fa6].get_output_pointers[1])
+		@comps[:fa8].set_input_pointer(2, @comps[:fa7].get_output_pointers[1])
+		
+		@ports[17] = @comps[:fa1].get_output_pointers[0]
+		@ports[18] = @comps[:fa2].get_output_pointers[0]
+		@ports[19] = @comps[:fa3].get_output_pointers[0]
+		@ports[20] = @comps[:fa4].get_output_pointers[0]
+		@ports[21] = @comps[:fa5].get_output_pointers[0]
+		@ports[22] = @comps[:fa6].get_output_pointers[0]
+		@ports[23] = @comps[:fa7].get_output_pointers[0]
+		@ports[24] = @comps[:fa8].get_output_pointers[0]
+		@ports[25] = @comps[:fa8].get_output_pointers[1]
+	end
+	
+	def update
+	end
+	
+	def set_input_pointer(n, idx)		
+		@ports[n] = idx
+		case n
+			when 0
+				@comps[:fa1].set_input_pointer(0, idx)
+			when 1
+				@comps[:fa2].set_input_pointer(0, idx)
+			when 2
+				@comps[:fa3].set_input_pointer(0, idx)
+			when 3
+				@comps[:fa4].set_input_pointer(0, idx)
+			when 4
+				@comps[:fa5].set_input_pointer(0, idx)
+			when 5
+				@comps[:fa6].set_input_pointer(0, idx)
+			when 6
+				@comps[:fa7].set_input_pointer(0, idx)
+			when 7
+				@comps[:fa8].set_input_pointer(0, idx)				
+			when 8
+				@comps[:x1].set_input_pointer(0, idx)				
+			when 9
+				@comps[:x2].set_input_pointer(0, idx)
+			when 10
+				@comps[:x3].set_input_pointer(0, idx)				
+			when 11
+				@comps[:x4].set_input_pointer(0, idx)				
+			when 12
+				@comps[:x5].set_input_pointer(0, idx)				
+			when 13
+				@comps[:x6].set_input_pointer(0, idx)				
+			when 14
+				@comps[:x7].set_input_pointer(0, idx)				
+			when 15
+				@comps[:x8].set_input_pointer(0, idx)		
+			when 16	
+				
+				@comps[:fa1].set_input_pointer(2, idx)
+				@comps[:x1].set_input_pointer(1, idx)				
+				@comps[:x2].set_input_pointer(1, idx)
+				@comps[:x3].set_input_pointer(1, idx)				
+				@comps[:x4].set_input_pointer(1, idx)				
+				@comps[:x5].set_input_pointer(1, idx)				
+				@comps[:x6].set_input_pointer(1, idx)				
+				@comps[:x7].set_input_pointer(1, idx)				
+				@comps[:x8].set_input_pointer(1, idx)			
+		end	
+	end
+end
+
+class HalfAdder < Component
+	 def initialize(sim)		
+		super(sim,2,2,0)		
+		@comps = {}
+		@comps[:xor] = XorGate.new(sim)		
+		@comps[:and] = AndGate.new(sim)
+		@ports[2] = @comps[:xor].get_output_pointers[0]
+		@ports[3] = @comps[:and].get_output_pointers[0]
+	end
+	
+	def update
+	end
+	
+	def set_input_pointer(n, idx)
+		@ports[n] = idx
+		case n
+			when 0
+				@comps[:xor].set_input_pointer(0, idx)
+				@comps[:and].set_input_pointer(0, idx)
+			when 1
+				@comps[:xor].set_input_pointer(1, idx)
+				@comps[:and].set_input_pointer(1, idx)
+		end	
+	end
+	
+	label_helper([:a,:b,:sum,:carry],2)
+end
+
+class FullAdder < Component
+	 def initialize(sim)		
+		super(sim,3,2,0)		
+		@comps = {}
+		@comps[:x1] = XorGate.new(sim)
+		@comps[:x2] = XorGate.new(sim)
+		@comps[:a1] = AndGate.new(sim)
+		@comps[:a2] = AndGate.new(sim)
+		@comps[:a3] = AndGate.new(sim)
+		@comps[:o1] = OrGate.new(sim)
+		@comps[:o2] = OrGate.new(sim)
+		
+		@comps[:x2].set_input_pointer(0, @comps[:x1].get_output_pointers[0])
+		
+		@comps[:o1].set_input_pointer(0, @comps[:a1].get_output_pointers[0])
+		@comps[:o1].set_input_pointer(1, @comps[:a2].get_output_pointers[0])
+		@comps[:o2].set_input_pointer(0, @comps[:o1].get_output_pointers[0])
+		@comps[:o2].set_input_pointer(1, @comps[:a3].get_output_pointers[0])
+		
+		@ports[3] = @comps[:x2].get_output_pointers[0]
+		@ports[4] = @comps[:o2].get_output_pointers[0]
+	end
+	
+	def update
+	end
+	
+	def set_input_pointer(n, idx)
+		@ports[n] = idx
+		case n
+			when 0
+				@comps[:a1].set_input_pointer(0, idx)
+				@comps[:a2].set_input_pointer(0, idx)
+				@comps[:x1].set_input_pointer(0, idx)				
+			when 1
+				@comps[:a1].set_input_pointer(1, idx)
+				@comps[:a3].set_input_pointer(0, idx)
+				@comps[:x1].set_input_pointer(1, idx)	
+			when 2
+				@comps[:a2].set_input_pointer(1, idx)
+				@comps[:a3].set_input_pointer(1, idx)
+				@comps[:x2].set_input_pointer(1, idx)				
+		end	
+	end
+	
+	label_helper([:a,:b,:c,:sum,:carry],3)
 end

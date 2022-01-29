@@ -1,3 +1,15 @@
+next_step = adder substractor by adding a 'sub' 
+if subtracting, take the 2's complement of the 2nd number first
+that means inverting and passing a 1 into the first adder (make it full instead of half duh)
+
+ports = [0,1,  gate1 output, gate2 output]
+
+non-core components - set input pointer should actually update the child component's input pointer instead...
+input_map = gate1 : [port idx...]
+recursive...
+
+clarify use of labels versus numbers...
+
 build an N bit pc from scratch
 really make it dynamic?
 
@@ -17,3 +29,8 @@ tests
 how to avoid magic?  cna we use wires instead of grabbing and setting values between outer shell and inner components
 could give each input a global id...
 so 'magic' only happens at the lower level - physical devices
+------
+
+
+
+
