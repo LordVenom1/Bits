@@ -12,10 +12,11 @@ DEBUG = true
 class TestSimple < Test::Unit::TestCase
 
 	def help_test_case(sim, component, i, o)
-			puts "start scenario - input: " + i.join(",")
-			component.set_input_values(i)	
+			puts "start scenario - input: " + i.join(",") if DEBUG
+			component.set_input_values(i)
+			sim.check()
 			sim.update	
-			puts component.dump	if DEBUG		
+			puts component.dump	if DEBUG and component.class.to_s.start_with?("ram")		
 			puts component.to_s if DEBUG
 			assert_equal(o, component.get_outputs().collect do |val| val ? 1 : 0 end, "input: " + i.join(","))
 	end
@@ -201,18 +202,41 @@ class TestSimple < Test::Unit::TestCase
 		})
 	end
 	
+	def test_fulladder8
+		s = Simulation.new()
+		c = FullAdder8.new(s)
+		
+		help_test_logic_table(s,c,
+		{
+			#                                  CI
+			[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  0] => [0,0,0,0,0,0,0,0,  0],
+			[0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,  0] => [0,0,0,0,0,0,0,1,  0],
+			[0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1,  0] => [0,0,0,0,0,0,1,0,  0],
+			[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  0] => [1,0,0,0,0,0,0,0,  0],
+			[1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,  0] => [0,0,0,0,0,0,0,0,  1],
+			[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,  0] => [1,1,1,1,1,1,1,0,  1],
+			[0,0,0,0,1,1,0,0,0,0,0,0,1,0,0,1,  0] => [0,0,0,1,0,1,0,1,  0],			
+			[1,1,0,0,0,1,0,1,1,0,0,1,1,1,1,0,  0] => [0,1,1,0,0,0,1,1,  1],
+			[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  1] => [0,0,0,0,0,0,0,1,  0],
+			[1,1,0,0,0,1,0,1,1,0,0,1,1,1,1,0,  1] => [0,1,1,0,0,1,0,0,  1]			
+		})
+	end
+	
 	def test_fulladdersub8
 		s = Simulation.new
 		c = FullAdderSub8.new(s)
 
 		help_test_logic_table(s,c,
 		{
-			[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0] => [0,0,0,0,0,0,0,0,0],
-			[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0] => [1,0,0,0,0,0,0,0,0],
-			[1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0] => [0,1,0,0,0,0,0,0,0],
-			[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0] => [0,1,1,1,1,1,1,1,1],
-			[0,0,0,0,1,1,0,0,0,0,0,0,1,0,0,1,0] => [0,0,0,0,0,0,1,1,0],			
-			[1,1,0,0,0,1,0,1,1,0,0,1,1,1,1,0,0] => [0,0,1,1,1,0,0,0,1]			
+			#                                  CI
+			[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  0] => [0,0,0,0,0,0,0,0,  0],
+			[0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,  0] => [0,0,0,0,0,0,0,1,  0],
+			[0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1,  0] => [0,0,0,0,0,0,1,0,  0],
+			[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  0] => [1,0,0,0,0,0,0,0,  0],
+			[1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,  0] => [0,0,0,0,0,0,0,0,  1],
+			[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,  0] => [1,1,1,1,1,1,1,0,  1],
+			[0,0,0,0,1,1,0,0,0,0,0,0,1,0,0,1,  0] => [0,0,0,1,0,1,0,1,  0],			
+			[1,1,0,0,0,1,0,1,1,0,0,1,1,1,1,0,  0] => [0,1,1,0,0,0,1,1,  1]			
 		})
 			
 		help_test_logic_table(s,c,
@@ -405,9 +429,20 @@ class TestSimple < Test::Unit::TestCase
 		s = Simulation.new()
 		c = RAM8x8.new(s)	
 		
-		# c.load("00000001\n00000010\n00000011\n00000100\n00000101\n00000110\n00000111\n00001000\n")
-		s.update
-		puts c.dump
+		c.set_input_values([0,0,0,0,0,0,0,0,  0,0,0, 0])
+		c.override(["00000000","00000001","00000010","00000011","00000100","00000101","00000110","00000111"])
+		help_test_case(s,c,[0,0,0,0,0,0,0,0,  1,0,1, 0],[0,0,0,0,0,1,0,1]) 
+		# puts c.dump
+	end
+	
+	def test_ram8x64load
+		s = Simulation.new()
+		c = RAM8x64.new(s)
+				
+		c.set_input_values([0,0,0,0,0,0,0,0,  0,0,0,0,0,0, 0])
+		c.load_file("debug64.txt")
+		
+		help_test_case(s,c,[1,1,1,1,1,1,1,1,  0,0,1,1,1,0, 0],[0,0,0,0,1,1,1,0]) # load num into addr 6
 	end
 	
 	def test_ram8x8
@@ -419,9 +454,9 @@ class TestSimple < Test::Unit::TestCase
 		help_test_case(s,c,[0,1,0,1,0,1,0,1,  0,1,0, 0],[0,0,0,0,0,0,0,0]) # verify addr 2 is empty
 		help_test_case(s,c,[0,0,0,0,0,0,0,1,  0,0,0, 0],[0,0,0,0,0,0,0,1]) # verify 1 still in addr 0 
 		help_test_case(s,c,[0,1,0,1,0,1,0,1,  0,1,0, 1],[0,1,0,1,0,1,0,1]) # load num into addr 2
-		help_test_case(s,c,[0,0,0,0,0,1,0,1,  1,0,1, 1],[0,0,0,0,0,1,0,1]) # load num into addr 5
-		help_test_case(s,c,[0,0,0,0,0,1,1,0,  1,1,0, 1],[0,0,0,0,0,1,1,0]) # load num into addr 6
-		help_test_case(s,c,[0,0,0,0,0,1,1,1,  1,1,1, 1],[0,0,0,0,0,1,1,1]) # load num into addr 7
+		help_test_case(s,c,[0,0,0,0,1,1,0,1,  1,0,1, 1],[0,0,0,0,1,1,0,1]) # load num into addr 5
+		help_test_case(s,c,[0,0,0,1,0,1,1,0,  1,1,0, 1],[0,0,0,1,0,1,1,0]) # load num into addr 6
+		help_test_case(s,c,[0,0,1,0,0,1,1,1,  1,1,1, 1],[0,0,1,0,0,1,1,1]) # load num into addr 7
 
 		
 		# puts c.dump
@@ -429,20 +464,50 @@ class TestSimple < Test::Unit::TestCase
 	
 	def test_ram8x64
 		s = Simulation.new()
-		c = RAM8x64.new(s)							
-		#                 ## data               sel   ld
-		help_test_case(s,c,[0,0,0,0,0,0,0,0,  0,0,0,0,0,0, 0],[0,0,0,0,0,0,0,0]) # sanity check
+		c = RAM8x64.new(s)	
+
+		c.load_file("debug64.txt")
+		
+		#                 ## data               sel        ld
+		help_test_case(s,c,[1,1,0,0,0,0,0,0,  0,0,0,0,0,0, 0],[0,0,0,0,0,0,0,0]) # sanity check
+		help_test_case(s,c,[1,1,0,0,0,0,0,0,  0,0,0,0,0,0, 1],[1,1,0,0,0,0,0,0]) # sanity check		
 		help_test_case(s,c,[0,0,0,0,0,0,0,1,  0,0,0,0,0,0, 1],[0,0,0,0,0,0,0,1]) # load 1 into addr 0
-		help_test_case(s,c,[0,1,0,1,0,1,0,1,  0,0,0,0,1,0, 0],[0,0,0,0,0,0,0,0]) # verify addr 2 is empty
+		help_test_case(s,c,[0,1,0,1,0,1,0,1,  0,0,0,0,1,0, 0],[0,0,0,0,0,0,1,0]) # verify addr 2 is empty
 		help_test_case(s,c,[0,0,0,0,0,0,0,1,  0,0,0,0,0,0, 0],[0,0,0,0,0,0,0,1]) # verify 1 still in addr 0 
 		help_test_case(s,c,[0,1,0,1,0,1,0,1,  0,0,0,0,1,0, 1],[0,1,0,1,0,1,0,1]) # load num into addr 2
 		help_test_case(s,c,[0,0,0,0,0,1,0,1,  0,0,0,1,0,1, 1],[0,0,0,0,0,1,0,1]) # load num into addr 5
 		help_test_case(s,c,[0,0,0,0,0,1,1,0,  0,0,0,1,1,0, 1],[0,0,0,0,0,1,1,0]) # load num into addr 6
 		help_test_case(s,c,[0,0,0,0,0,1,1,1,  0,0,0,1,1,1, 1],[0,0,0,0,0,1,1,1]) # load num into addr 7
-
 		
-		# puts c.dump
+		help_test_case(s,c,[0,1,0,1,0,1,0,1,  1,0,0,0,1,0, 0],[0,0,1,0,0,0,1,0]) # test high bits
+		help_test_case(s,c,[0,0,0,0,0,1,0,1,  1,0,0,1,0,1, 0],[0,0,1,0,0,1,0,1]) # test high bits
+		help_test_case(s,c,[0,0,0,0,0,1,1,0,  0,1,0,1,1,0, 0],[0,0,0,1,0,1,1,0]) # test high bits
+		help_test_case(s,c,[0,0,0,0,0,1,1,1,  1,1,1,1,1,1, 0],[0,0,1,1,1,1,1,1]) # test high bits
+		help_test_case(s,c,[0,1,0,1,0,1,0,1,  1,0,1,0,1,0, 0],[0,0,1,0,1,0,1,0]) # test high bits
+		help_test_case(s,c,[0,0,0,0,0,1,0,1,  0,0,1,1,0,1, 0],[0,0,0,0,1,1,0,1]) # test high bits
+		help_test_case(s,c,[0,0,0,0,0,1,1,0,  1,0,0,1,1,0, 0],[0,0,1,0,0,1,1,0]) # test high bits
+		help_test_case(s,c,[0,0,0,0,0,1,1,1,  0,0,1,1,1,1, 0],[0,0,0,0,1,1,1,1]) # test high bits
+		
+		
 	end 	
+	
+	def test_programcounter
+		s = Simulation.new()
+		c = ProgramCounter.new(s)
+		
+		#                                   inc,jmp
+		help_test_case(s,c,[0,0,0,0,0,0,0,0,  0,0],[0,0,0,0,0,0,0,0])
+		#                                   inc,jmp
+		help_test_case(s,c,[0,0,0,0,0,0,0,0,  1,0],[0,0,0,0,0,0,0,1])	
+		#                                   inc,jmp
+		help_test_case(s,c,[0,0,0,0,0,0,0,0,  1,0],[0,0,0,0,0,0,1,0])	
+		#                                   inc,jmp
+		help_test_case(s,c,[0,0,0,0,0,0,0,0,  0,0],[0,0,0,0,0,0,1,0])			
+		#                                   inc,jmp
+		help_test_case(s,c,[0,0,0,0,0,0,0,0,  0,0],[0,0,0,0,0,0,1,0])	
+		#                                   inc,jmp
+		help_test_case(s,c,[0,0,0,0,0,0,0,0,  1,0],[0,0,0,0,0,0,1,1])	
+	end
 	
 	def teardown
 	end

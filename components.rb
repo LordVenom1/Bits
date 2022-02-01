@@ -24,6 +24,7 @@ class InputAbstract
 	end
 	
 	def set_source(output)
+		raise 'bad output type' unless [OutputAbstract,OutputPhysical].include? output.class
 		@target.set_source(output)
 	end	
 	
@@ -42,6 +43,7 @@ class InputPhysical
 	end
 	
 	def set_source(output)
+		raise 'bad output type' unless [OutputAbstract,OutputPhysical].include? output.class
 		@target = output
 	end
 	
@@ -83,14 +85,14 @@ end
 
 class OutputPhysical
 	def initialize
-		@value = nil
+		# nil is a problem due to initial update trying to pull in nil values and replicate them forward
+		@value = false 
 	end
 	
 	def set_value(v)
-		puts v.to_s
 		if [0,'0','f','F',false].include?(v)
 			@value = false
-		elsif [1,'1','t','T',true].include?(v)
+		elsif [1,'1','t','T',true].include?(v)  # nil no longer defaults to true, wtf
 			@value = true
 		else
 			raise 'invalid output value ' + v.class.to_s
@@ -128,6 +130,17 @@ class Simulation
 	
 	def mark_dirty
 		@dirty = true
+	end
+	
+	def check()
+		@components.each do |c|
+			c.inputs.each do |i|
+				raise 'bad input on ' + c.to_s unless i != nil
+			end
+			c.outputs.each do |i|
+				raise 'bad output on ' + c.to_s unless i != nil
+			end
+		end
 	end
 	
 	def update()		
@@ -208,18 +221,34 @@ class Component
 	end
 			
 	def to_s
-		self.class.to_s + ":\n\tin:" + (0...@inputs.size).collect do |i| 
-			@inputs[i].get_value() ? '1' : '0'
+		self.class.to_s + ":\n\tin:" + (0...@inputs.size).collect do |i|
+			
+			v = @inputs[i].get_value()
+			
+			if [true,false].include? v
+				v ? '1' : '0'
+			else
+				"<<#{v}>>"
+			end
+			#raise 'bad value' unless [true,false].include? v
+			
 		end.join("") + " out:" + (0...@outputs.size).collect do |i|
-			@outputs[i].get_value() ? '1' : '0'
+			v = @outputs[i].get_value()
+			if [true,false].include? v
+				v ? '1' : '0'
+			else
+				"<<#{v}>>"
+			end
 		end.join("") + "\n"
 	end
 	
 	# helper to mass assign inputs
+	# only works on top-most component, otherwise aliases will break
 	def set_input_values(vals)		
 		raise 'bad input' unless vals.size == @inputs.size
 		vals.each_with_index do |val,idx|
 			signal = nil
+			
 			if [0,'0','F',false].include?(val)
 				signal = @sim.false_signal
 			elsif [1,'1','T',true].include?(val)				
@@ -227,8 +256,6 @@ class Component
 			else
 				raise 'invalid value: ' + val.to_s
 			end
-
-			# rescue 
 			@inputs[idx].set_source(signal.outputs[0])
 	
 		end
@@ -421,10 +448,15 @@ end
 	end
 	
 	def override(v)		
+	
+		raise 'oh no' if @outputs[0] === @sim.false_signal
+		raise 'oh no' if @outputs[0] === @sim.true_signal
+	
 		if [0,'0','f','F',false].include?(v)
-			@outputs[0] = @sim.false_signal #.set_value(@sim.false_signal)
+			
+			@outputs[0].set_value(false)
 		elsif [1,'1','t','T',true].include?(v)
-			@outputs[0] = @sim.true_signal #.set_value(@sim.true_signal)
+			@outputs[0].set_value(true)
 		else
 			raise 'invalid output value ' + v
 		end	
@@ -493,7 +525,7 @@ class Register8 < Component
 		# @r = r
 	end
 	
-	def load(values)
+	def override(values)
 		raise 'bad data: ' + values unless values.class == String and values.size == 8
 		(0...8).each do |idx|
 			@r[idx].override(values[idx])
@@ -506,9 +538,45 @@ class Register8 < Component
 		
 end
 
+class FullAdder8 < Component
+	 def initialize(sim)		
+		super(sim,17,9,0)	# input: a + b, 17th = carry-in  output: 8 digits plus carry
+		
+		@fa = Array.new(8) do FullAdder.new(sim)	end
+			
+		# carry in
+		@inputs[16].alias(@fa[7].inputs[2])
+		
+		# connect carry-in to carry-out of previous adder
+		(0...7).each do |idx|		
+			@fa[idx].inputs[2].set_source(@fa[idx+1].outputs[1])
+			@fa[idx].inputs[2].set_source(@fa[idx+1].outputs[1])
+			@fa[idx].inputs[2].set_source(@fa[idx+1].outputs[1])
+			@fa[idx].inputs[2].set_source(@fa[idx+1].outputs[1])
+			@fa[idx].inputs[2].set_source(@fa[idx+1].outputs[1])
+			@fa[idx].inputs[2].set_source(@fa[idx+1].outputs[1])
+			@fa[idx].inputs[2].set_source(@fa[idx+1].outputs[1])	
+		end
+
+		# first 8 are a, 2nd 8 are b
+		(0...8).each do |idx|
+			@inputs[idx].alias(@fa[idx].inputs[0])
+			@inputs[idx+8].alias(@fa[idx].inputs[1])
+			@outputs[idx].alias(@fa[idx].outputs[0])
+		end
+			
+		@outputs[8].alias(@fa[0].outputs[1])		
+	end
+	
+	def to_s
+		[super, @fa.join("")]
+	end
+end
+
 class FullAdderSub8 < Component
 	 def initialize(sim)		
 		super(sim,17,9,0)	# input: a + b, 17th = sub  output: 8 digits plus carry
+		
 		
 		fa1 = FullAdder.new(sim)		
 		fa2 = FullAdder.new(sim)
@@ -651,17 +719,17 @@ class FullAdder < Component
 		@inputs[1].alias(b2.inputs[0])
 		@inputs[2].alias(b3.inputs[0])
 		
-		a1.inputs[0].set_source(b1.inputs[0])
-		a2.inputs[0].set_source(b1.inputs[0])
-		x1.inputs[0].set_source(b1.inputs[0])
+		a1.inputs[0].set_source(b1.outputs[0])
+		a2.inputs[0].set_source(b1.outputs[0])
+		x1.inputs[0].set_source(b1.outputs[0])
 		
-		a1.inputs[1].set_source(b2.inputs[0])
-		a3.inputs[0].set_source(b2.inputs[0])
-		x1.inputs[1].set_source(b2.inputs[0])
+		a1.inputs[1].set_source(b2.outputs[0])
+		a3.inputs[0].set_source(b2.outputs[0])
+		x1.inputs[1].set_source(b2.outputs[0])
 		
-		a2.inputs[1].set_source(b3.inputs[0])
-		a3.inputs[1].set_source(b3.inputs[0])
-		x2.inputs[1].set_source(b3.inputs[0])
+		a2.inputs[1].set_source(b3.outputs[0])
+		a3.inputs[1].set_source(b3.outputs[0])
+		x2.inputs[1].set_source(b3.outputs[0])
 		
 		@outputs[0].alias(x2.outputs[0])
 		@outputs[1].alias(o2.outputs[0])
@@ -701,9 +769,9 @@ class Multiplexer2 < Component
 		@outputs[0].alias(@o.outputs[0])
 	end
 	
-	# def to_s
+	def to_s
 		# ["mux2",super, @b1, @b2, @b3, @n1, @a1, @a2, @o,"mux2end"].join(",")
-	# end
+	end
 end
 
 class Multiplexer4 < Component
@@ -726,9 +794,11 @@ class Multiplexer4 < Component
 		@outputs[0].alias(@mo.outputs[0])	
 	end
 	
-	# def to_s
-		# [super, @m1.to_s, @m2.to_s, @mo.to_s, @b].join(":")
-	# end
+	def to_s
+		puts @b.inputs[0].get_value()
+		@b.to_s		
+		[super, @m1.to_s, @m2.to_s, @mo.to_s, @b].join(":")
+	end
 end
 
 class Multiplexer8 < Component
@@ -901,11 +971,11 @@ class RAM8x8 < Component
 		end.join("\n")
 	end
 	
-	def load(values)	
-		chunks = values.split("\n")
-		raise 'bad values' unless chunks.size == 8
-		(0...8).each do |idx|		
-			@r[idx].load(chunks[idx])			
+	def override(values)	
+		# chunks = values.split("\n")
+		raise 'bad values' unless values.size == 8
+		(0...8).each do |idx|	
+			@r[idx].override(values[idx])			
 		end
 	end	
 	
@@ -913,9 +983,9 @@ class RAM8x8 < Component
 		# puts @m[0].to_s
 	end
 	
-	def to_s
-		[super, @addr0, @addr1, @addr2, @m.collect do |m| m.to_s end.join(","), @r.collect do |r| r.to_s end.join(',')].join("\n")
-	end
+	# def to_s
+		# [super, @addr0, @addr1, @addr2, @m.collect do |m| m.to_s end.join(","), @r.collect do |r| r.to_s end.join(',')].join("\n")
+	# end
 end
 
 class RAM8x64 < Component
@@ -941,25 +1011,29 @@ class RAM8x64 < Component
 		
 		@r = Array.new(8) do RAM8x8.new(sim) end
 		(0...8).each do |idx|
-			@r[idx].inputs[11].set_source(@load.outputs[7 - idx])  # output 0 is lsb for a demux
 			(0...8).each do |j|
 				@r[idx].inputs[j].set_source(@data[j].outputs[0])
 			end
 			@r[idx].inputs[8].set_source(@addr[3].outputs[0]) # low bits to each sub ram module
 			@r[idx].inputs[9].set_source(@addr[4].outputs[0])
 			@r[idx].inputs[10].set_source(@addr[5].outputs[0])
+			@r[idx].inputs[11].set_source(@load.outputs[7 - idx])  # output 0 is lsb for a demux			
 		end
 		
 		@m = Array.new(8) do Multiplexer8.new(sim) end  # 11/1
 		(0...8).each do |idx|	
-			@m[idx].inputs[8].set_source(@addr[3].outputs[0])
-			@m[idx].inputs[9].set_source(@addr[4].outputs[0])
-			@m[idx].inputs[10].set_source(@addr[5].outputs[0])		
+			@m[idx].inputs[8].set_source(@addr[0].outputs[0])
+			@m[idx].inputs[9].set_source(@addr[1].outputs[0])
+			@m[idx].inputs[10].set_source(@addr[2].outputs[0])		
 			(0...8).each do |j|
-				@m[j].inputs[idx].set_source(@r[idx].outputs[j])
+				@m[j].inputs[idx].set_source(@r[7 - idx].outputs[j])
 			end	
 			@outputs[idx].alias(@m[idx].outputs[0])
 		end		
+	end
+	
+	def to_s
+		[@data.join(""),@addr.join(""),@load,@r.join(""),@m.join("")].join("\n")
 	end
 	
 	def dump(off = 0)
@@ -969,17 +1043,64 @@ class RAM8x64 < Component
 		end.join("\n")
 	end
 
-	def load(values)
+	def override(values)
+		raise 'bad input' unless values.size == 64
+		idx = 0
+		# puts values.size
 		values.each_slice(8) do |chunk|
-			@r.load(chunk)
+			puts chunk
+			@r[idx].override(chunk)
+			idx += 1
 		end
 	end
 	
 	
 	def load_file(filename)
-		load(File.readlines(filename))
+		override(File.readlines(filename).collect do |line| line.strip end)
 	end
 end
+
+class ProgramCounter < Component
+	def initialize(sim) 
+		super(sim,10,8) # 8 data, increment, jump
+		@r = Register8.new(sim)
+		@add = FullAdder8.new(sim)
+		
+		@m = Array.new(8) do Multiplexer2.new(sim) end
+					
+		@inc = BufferGate.new(sim)
+		@jmp = BufferGate.new(sim)
+			
+		(0...8).each do |idx|
+			@inputs[idx].alias(@m.inputs[1])
+			@outputs[idx].alias(@r.outputs[idx])
+			@m[idx].inputs[0].set_source(@add.outputs[idx])
+			@add.inputs[idx].set_source(@m[idx].outputs[0])
+			@add.inputs[8+idx].set_source(@sim.false_signal.outputs[0])
+		end
+		@inputs[8].alias(@inc.inputs[0])
+		@inputs[9].alias(@jmp.inputs[0])
+		
+		# @carryin = OrGate.new()
+		# @carryin.inputs[0].set_source(@inc.outputs[0])
+		# @carryin.inputs[1].set_source(@jmp.outputs[0])
+		# carry in 1 if incrementing...
+		@add.inputs[9].set_source(@inc.outputs[0])
+		
+	end
+end
+
+class Computer1
+	def initialize()
+		sim = Simulation.new()
+	
+		pc = ProgramCounter.new(sim)
+		
+	# program counter
+	
+	end
+end
+
 # ai in load signl
 # a out signal
 # b in
