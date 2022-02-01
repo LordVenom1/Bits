@@ -154,12 +154,17 @@ class Simulation
 			raise 'failure to converge' if n == 0
 			@dirty = false
 			@components.each do |c|
-				c.update
+				begin
+					c.update
+				rescue StandardError => ex
+					raise c.class.to_s + " - " + ex.to_s
+				end
 			end
 		end		
 
 		@clock.pulse
 		
+		n = MAX_ITERATIONS
 		@dirty = true
 		while @dirty
 			#puts "UPDATING"
@@ -167,7 +172,14 @@ class Simulation
 			raise 'failure to converge' if n == 0
 			@dirty = false
 			@components.each do |c|
-				c.update
+			
+				begin
+					c.update
+				rescue StandardError => ex
+					raise c.class.to_s + " - " + ex.to_s
+				end
+				
+				
 			end
 		end	
 		
@@ -223,6 +235,7 @@ class Component
 	def to_s
 		self.class.to_s + ":\n\tin:" + (0...@inputs.size).collect do |i|
 			
+			puts "#{self.class.to_s} #{i}"
 			v = @inputs[i].get_value()
 			
 			if [true,false].include? v
@@ -242,21 +255,25 @@ class Component
 		end.join("") + "\n"
 	end
 	
+	
+	def set_input_value(idx, val)
+		signal = nil
+			
+		if [0,'0','F',false].include?(val)
+			signal = @sim.false_signal
+		elsif [1,'1','T',true].include?(val)				
+			signal = @sim.true_signal
+		else
+			raise 'invalid value: ' + val.to_s
+		end
+		@inputs[idx].set_source(signal.outputs[0])
+	end
 	# helper to mass assign inputs
 	# only works on top-most component, otherwise aliases will break
 	def set_input_values(vals)		
 		raise 'bad input' unless vals.size == @inputs.size
 		vals.each_with_index do |val,idx|
-			signal = nil
-			
-			if [0,'0','F',false].include?(val)
-				signal = @sim.false_signal
-			elsif [1,'1','T',true].include?(val)				
-				signal = @sim.true_signal
-			else
-				raise 'invalid value: ' + val.to_s
-			end
-			@inputs[idx].set_source(signal.outputs[0])
+			set_input_value(idx,val)
 	
 		end
 	end
@@ -433,9 +450,19 @@ class BufferGate < Component
 		
 	label_helper([:a,:x], 1)
 end
-		
+	
+class Buffer8 < Component
+	def initialize(sim)
+		super(sim,8,8)
+		@b = Array.new(8) do BufferGate.new(sim) end
+		(0...8).each do |idx|
+			@inputs[idx].alias(@b[idx].inputs[0])
+			@outputs[idx].alias(@b[idx].outputs[0])
+		end
+	end
+end
 
- class DataLatch < Component
+class DataLatch < Component
 	def initialize(sim)
 		super(sim,1,1,false)
 		sim.clock.register(self)
@@ -532,15 +559,15 @@ class Register8 < Component
 		end
 	end
 	
-	# def to_s
-		# ([super,@b.to_s] + @r.collect do |x| x.to_s end).join("\n\t")
-	# end
+	def to_s
+		([super,@b.to_s] + @r.collect do |x| x.to_s end).join("\n\t")
+	end
 		
 end
 
 class FullAdder8 < Component
 	 def initialize(sim)		
-		super(sim,17,9,0)	# input: a + b, 17th = carry-in  output: 8 digits plus carry
+		super(sim,17,9)	# input: a + b, 17th = carry-in  output: 8 digits plus carry
 		
 		@fa = Array.new(8) do FullAdder.new(sim)	end
 			
@@ -578,85 +605,24 @@ class FullAdderSub8 < Component
 		super(sim,17,9,0)	# input: a + b, 17th = sub  output: 8 digits plus carry
 		
 		
-		fa1 = FullAdder.new(sim)		
-		fa2 = FullAdder.new(sim)
-		fa3 = FullAdder.new(sim)
-		fa4 = FullAdder.new(sim)
-		fa5 = FullAdder.new(sim)
-		fa6 = FullAdder.new(sim)
-		fa7 = FullAdder.new(sim)
-		fa8 = FullAdder.new(sim)
+		@fa = FullAdder8.new(sim)
 		
-		x1 = XorGate.new(sim)
-		x2 = XorGate.new(sim)
-		x3 = XorGate.new(sim)
-		x4 = XorGate.new(sim)
-		x5 = XorGate.new(sim)
-		x6 = XorGate.new(sim)
-		x7 = XorGate.new(sim)
-		x8 = XorGate.new(sim)
+		@x = Array.new(8) do XorGate.new(sim) end
+		@b = BufferGate.new(sim) # subtraction
 
-		fa1.inputs[1].set_source(x1.outputs[0])
-		fa2.inputs[1].set_source(x2.outputs[0])
-		fa3.inputs[1].set_source(x3.outputs[0])
-		fa4.inputs[1].set_source(x4.outputs[0])
-		fa5.inputs[1].set_source(x5.outputs[0])
-		fa6.inputs[1].set_source(x6.outputs[0])
-		fa7.inputs[1].set_source(x7.outputs[0])
-		fa8.inputs[1].set_source(x8.outputs[0])
+		# connect a and xor to full adder
+		(0...8).each do |idx|
+			@inputs[idx].alias(@fa.inputs[idx])
+			@inputs[idx+8].alias(@x[idx].inputs[0])
+			@x[idx].inputs[1].set_source(@b.outputs[0])
+			@fa.inputs[8+idx].set_source(@x[idx].outputs[0])			
+			
+			@outputs[idx].alias(@fa.outputs[idx])
+		end
 		
-		b = BufferGate.new(sim) # subtraction
-		
-		# carry in?
-		fa2.inputs[2].set_source(fa1.outputs[1])
-		fa3.inputs[2].set_source(fa2.outputs[1])
-		fa4.inputs[2].set_source(fa3.outputs[1])
-		fa5.inputs[2].set_source(fa4.outputs[1])
-		fa6.inputs[2].set_source(fa5.outputs[1])
-		fa7.inputs[2].set_source(fa6.outputs[1])
-		fa8.inputs[2].set_source(fa7.outputs[1])	
-
-		@inputs[0].alias(fa1.inputs[0])
-		@inputs[1].alias(fa2.inputs[0])
-		@inputs[2].alias(fa3.inputs[0])
-		@inputs[3].alias(fa4.inputs[0])
-		@inputs[4].alias(fa5.inputs[0])
-		@inputs[5].alias(fa6.inputs[0])
-		@inputs[6].alias(fa7.inputs[0])
-		@inputs[7].alias(fa8.inputs[0])
-		
-		@inputs[8].alias(x1.inputs[0])
-		@inputs[9].alias(x2.inputs[0])
-		@inputs[10].alias(x3.inputs[0])
-		@inputs[11].alias(x4.inputs[0])
-		@inputs[12].alias(x5.inputs[0])
-		@inputs[13].alias(x6.inputs[0])
-		@inputs[14].alias(x7.inputs[0])
-		@inputs[15].alias(x8.inputs[0])
-		
-		
-		@inputs[16].alias(b.inputs[0])
-		
-		fa1.inputs[2].set_source(b.outputs[0])
-		x1.inputs[1].set_source(b.outputs[0])
-		x2.inputs[1].set_source(b.outputs[0])
-		x3.inputs[1].set_source(b.outputs[0])
-		x4.inputs[1].set_source(b.outputs[0])
-		x5.inputs[1].set_source(b.outputs[0])
-		x6.inputs[1].set_source(b.outputs[0])
-		x7.inputs[1].set_source(b.outputs[0])
-		x8.inputs[1].set_source(b.outputs[0])
-
-		@outputs[0].alias(fa1.outputs[0])
-		@outputs[1].alias(fa2.outputs[0])
-		@outputs[2].alias(fa3.outputs[0])
-		@outputs[3].alias(fa4.outputs[0])
-		@outputs[4].alias(fa5.outputs[0])
-		@outputs[5].alias(fa6.outputs[0])
-		@outputs[6].alias(fa7.outputs[0])
-		@outputs[7].alias(fa8.outputs[0])
-		@outputs[8].alias(fa8.outputs[1])
-		
+		@inputs[16].alias(@b.inputs[0])
+		@fa.inputs[16].set_source(@b.outputs[0])  # carry-in if subtracting.			
+		@outputs[8].alias(@fa.outputs[8])
 	end
 end
 
@@ -769,9 +735,9 @@ class Multiplexer2 < Component
 		@outputs[0].alias(@o.outputs[0])
 	end
 	
-	def to_s
+	# def to_s
 		# ["mux2",super, @b1, @b2, @b3, @n1, @a1, @a2, @o,"mux2end"].join(",")
-	end
+	# end
 end
 
 class Multiplexer4 < Component
@@ -1063,7 +1029,7 @@ end
 class ProgramCounter < Component
 	def initialize(sim) 
 		super(sim,10,8) # 8 data, increment, jump
-		@r = Register8.new(sim)
+		@r = Register8.new(sim) #9,8
 		@add = FullAdder8.new(sim)
 		
 		@m = Array.new(8) do Multiplexer2.new(sim) end
@@ -1072,21 +1038,27 @@ class ProgramCounter < Component
 		@jmp = BufferGate.new(sim)
 			
 		(0...8).each do |idx|
-			@inputs[idx].alias(@m.inputs[1])
+			@inputs[idx].alias(@m[idx].inputs[0])
 			@outputs[idx].alias(@r.outputs[idx])
-			@m[idx].inputs[0].set_source(@add.outputs[idx])
-			@add.inputs[idx].set_source(@m[idx].outputs[0])
-			@add.inputs[8+idx].set_source(@sim.false_signal.outputs[0])
+			@m[idx].inputs[1].set_source(@add.outputs[idx])
+			@r.inputs[idx].set_source(@m[idx].outputs[0])
+			@add.inputs[idx].set_source(@r.outputs[idx])
+			@add.inputs[8+idx].set_source(FalseSignal.new(sim).outputs[0])
+			@m[idx].inputs[2].set_source(@jmp.outputs[0])
 		end
 		@inputs[8].alias(@inc.inputs[0])
 		@inputs[9].alias(@jmp.inputs[0])
+		@r.inputs[8].set_source(@inc.outputs[0])
 		
 		# @carryin = OrGate.new()
 		# @carryin.inputs[0].set_source(@inc.outputs[0])
 		# @carryin.inputs[1].set_source(@jmp.outputs[0])
 		# carry in 1 if incrementing...
-		@add.inputs[9].set_source(@inc.outputs[0])
-		
+		@add.inputs[16].set_source(@inc.outputs[0])
+	end
+	
+	def to_s
+		[super, @r, @add.to_s, @m.join(""), @inc, @jmp].join("\n")
 	end
 end
 
@@ -1094,8 +1066,12 @@ class Computer1
 	def initialize()
 		sim = Simulation.new()
 	
+		ram = RAM8x64.new(sim)
 		pc = ProgramCounter.new(sim)
-		
+		a = Register8(sum)
+		b = Register8(sum)
+		c = Register8(sum)
+		d = Register8(sum)
 	# program counter
 	
 	end

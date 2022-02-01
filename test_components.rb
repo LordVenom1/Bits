@@ -6,8 +6,8 @@ require './components.rb'
 	# attr_reader :inputs, :outputs
 # end
 
-# DEBUG = false
-DEBUG = true
+DEBUG = false
+# DEBUG = true
 
 class TestSimple < Test::Unit::TestCase
 
@@ -15,6 +15,7 @@ class TestSimple < Test::Unit::TestCase
 			puts "start scenario - input: " + i.join(",") if DEBUG
 			component.set_input_values(i)
 			sim.check()
+			puts component.to_s
 			sim.update	
 			puts component.dump	if DEBUG and component.class.to_s.start_with?("ram")		
 			puts component.to_s if DEBUG
@@ -226,6 +227,14 @@ class TestSimple < Test::Unit::TestCase
 		s = Simulation.new
 		c = FullAdderSub8.new(s)
 
+		c.set_input_value(0,true)		
+		c.set_input_value(10,true)
+		c.set_input_value(14,true)		
+		c.set_input_value(15,true)
+		c.set_input_value(16,true)
+		
+		
+		
 		help_test_logic_table(s,c,
 		{
 			#                                  CI
@@ -244,8 +253,9 @@ class TestSimple < Test::Unit::TestCase
 			[0,0,0,1,1,0,0,0,0,0,0,0,1,0,0,0,1] => [0,0,0,1,0,0,0,0,1], # not sure what carry means yet
 			[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1] => [0,0,0,0,0,0,0,0,1],			
 			[1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1] => [0,0,0,0,0,0,0,0,1],			
-			[1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1] => [1,1,1,1,1,1,1,1,0]		
-			
+			[1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1] => [0,1,0,0,0,0,0,0,1],	
+			[0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,1,1] => [0,0,0,0,0,1,1,0,1],
+			[0,0,0,0,0,0,0,1,0,0,0,0,0,1,1,1,1] => [1,1,1,1,1,0,1,0,0],	
 		})
 	end	
 	
@@ -495,9 +505,11 @@ class TestSimple < Test::Unit::TestCase
 		s = Simulation.new()
 		c = ProgramCounter.new(s)
 		
+		
+				
 		#                                   inc,jmp
 		help_test_case(s,c,[0,0,0,0,0,0,0,0,  0,0],[0,0,0,0,0,0,0,0])
-		#                                   inc,jmp
+		#                                   inc,jmp		
 		help_test_case(s,c,[0,0,0,0,0,0,0,0,  1,0],[0,0,0,0,0,0,0,1])	
 		#                                   inc,jmp
 		help_test_case(s,c,[0,0,0,0,0,0,0,0,  1,0],[0,0,0,0,0,0,1,0])	
@@ -507,6 +519,11 @@ class TestSimple < Test::Unit::TestCase
 		help_test_case(s,c,[0,0,0,0,0,0,0,0,  0,0],[0,0,0,0,0,0,1,0])	
 		#                                   inc,jmp
 		help_test_case(s,c,[0,0,0,0,0,0,0,0,  1,0],[0,0,0,0,0,0,1,1])	
+	end
+	
+	def test_computer
+		comp = Computer1.new()
+		
 	end
 	
 	def teardown
