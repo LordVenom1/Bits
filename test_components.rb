@@ -15,7 +15,7 @@ class TestSimple < Test::Unit::TestCase
 			puts "start scenario - input: " + i.join(",") if DEBUG
 			component.set_input_values(i)
 			sim.check() if DEBUG
-			puts component.to_s
+			# puts component.to_s
 			sim.update	
 			puts component.dump	if DEBUG and component.class.to_s.start_with?("ram")		
 			puts component.to_s if DEBUG
@@ -32,7 +32,7 @@ class TestSimple < Test::Unit::TestCase
 	
 	def test_or		
 		s = Simulation.new
-		c = OrGate.new(s)		
+		c = OrGate.new(s,"comp",nil)		
 		help_test_logic_table(s,c,
 		{
 			#[0,0] => [0],
@@ -45,7 +45,7 @@ class TestSimple < Test::Unit::TestCase
 	
 	def test_and
 		s = Simulation.new	
-		c = AndGate.new(s)
+		c = AndGate.new(s,"comp",nil)
 		help_test_logic_table(s,c,
 			{
 				[0,0] => [0],
@@ -58,7 +58,7 @@ class TestSimple < Test::Unit::TestCase
 	
 	def test_xor		
 		s = Simulation.new	
-		c = XorGate.new(s)
+		c = XorGate.new(s,"comp",nil)
 		help_test_logic_table(s,c,
 			{
 				[0,0] => [0],
@@ -71,7 +71,7 @@ class TestSimple < Test::Unit::TestCase
 	
 	def test_nand	
 		s = Simulation.new	
-		c = NandGate.new(s)
+		c = NandGate.new(s,"comp",nil)
 		help_test_logic_table(s,c,
 			{
 				[0,0] => [1],
@@ -84,7 +84,7 @@ class TestSimple < Test::Unit::TestCase
 	
 	def test_not
 		s = Simulation.new	
-		c = NotGate.new(s)
+		c = NotGate.new(s,"comp",nil)
 		help_test_logic_table(s,c,
 			{
 				[1] => [0],
@@ -96,7 +96,7 @@ class TestSimple < Test::Unit::TestCase
 	
 	def test_register
 		s = Simulation.new
-		c = Register.new(s)
+		c = Register.new(s,"comp",nil)
 		
 		c.set_input_values([1,0])
 		s.update
@@ -115,7 +115,7 @@ class TestSimple < Test::Unit::TestCase
 	
 	def test_registern
 		s = Simulation.new
-		c = RegisterN.new(s,2)
+		c = RegisterN.new(s,"comp",nil,2)
 		
 		help_test_logic_table(s,c,
 			{
@@ -127,7 +127,7 @@ class TestSimple < Test::Unit::TestCase
 	
 	def test_register8
 		s = Simulation.new
-		c = Register8.new(s)
+		c = Register8.new(s,"comp",nil)
 				
 		c.set_input_values([1,1,1,1,1,1,1,1,0])
 		s.update		
@@ -149,7 +149,7 @@ class TestSimple < Test::Unit::TestCase
 	
 	def test_datareg
 		s = Simulation.new
-		c = DataLatch.new(s)
+		c = DataLatch.new(s,"comp",nil)
 		c.inputs[0].set_source(s.true_signal.outputs[0])		
 		s.update
 		assert_equal(true, c.get_output(0))		
@@ -157,7 +157,7 @@ class TestSimple < Test::Unit::TestCase
 	
 	def test_buffer
 		s = Simulation.new
-		c = BufferGate.new(s)
+		c = BufferGate.new(s,"comp",nil)
 		help_test_logic_table(s,c,
 			{
 				[1] => [1],
@@ -168,9 +168,9 @@ class TestSimple < Test::Unit::TestCase
 	
 	def test_datareg_not
 		s = Simulation.new
-		c = DataLatch.new(s)		
+		c = DataLatch.new(s,"dl",nil)		
 		
-		n = NotGate.new(s)
+		n = NotGate.new(s,"not",nil)
 		n.inputs[0].set_source(c.outputs[0])
 		c.inputs[0].set_source(n.outputs[0])
 		
@@ -187,7 +187,7 @@ class TestSimple < Test::Unit::TestCase
 	
 	def test_halfadder
 		s = Simulation.new
-		c = HalfAdder.new(s)
+		c = HalfAdder.new(s,"comp",nil)
 		
 		help_test_logic_table(s,c,
 		{
@@ -200,7 +200,7 @@ class TestSimple < Test::Unit::TestCase
 	
 	def test_fulladder
 		s = Simulation.new
-		c = FullAdder.new(s)
+		c = FullAdder.new(s,"comp",nil)
 		
 		help_test_logic_table(s,c,
 		{
@@ -217,7 +217,7 @@ class TestSimple < Test::Unit::TestCase
 	
 	def test_fulladder8
 		s = Simulation.new()
-		c = FullAdder8.new(s)
+		c = FullAdder8.new(s,"comp",nil)
 		
 		help_test_logic_table(s,c,
 		{
@@ -237,7 +237,7 @@ class TestSimple < Test::Unit::TestCase
 	
 	def test_fulladdersub8
 		s = Simulation.new
-		c = FullAdderSub8.new(s)
+		c = FullAdderSub8.new(s,"comp",nil)
 
 		c.set_input_value(0,true)		
 		c.set_input_value(10,true)
@@ -273,7 +273,7 @@ class TestSimple < Test::Unit::TestCase
 	
 	def test_and4
 		s = Simulation.new	
-		c = And4Gate.new(s)
+		c = And4Gate.new(s,"comp",nil)
 		
 		help_test_logic_table(s,c,
 			{
@@ -299,7 +299,7 @@ class TestSimple < Test::Unit::TestCase
 	
 	def test_mux2
 		s = Simulation.new
-		c = Multiplexer2.new(s)
+		c = Multiplexer2.new(s,"comp",nil)
 		
 		help_test_logic_table(s,c,
 			{
@@ -317,7 +317,7 @@ class TestSimple < Test::Unit::TestCase
 	
 	def test_mux4
 		s = Simulation.new
-		c = Multiplexer4.new(s)
+		c = Multiplexer4.new(s,"comp",nil)
 		
 		help_test_logic_table(s,c,
 			{
@@ -391,7 +391,7 @@ class TestSimple < Test::Unit::TestCase
 	
 	def test_mux8
 		s = Simulation.new()
-		c = Multiplexer8.new(s)
+		c = Multiplexer8.new(s,"comp",nil)
 		help_test_logic_table(s,c,		
 			{
 			[0,0,0,0,0,0,0,0,  0,0,0] => [0],
@@ -404,7 +404,7 @@ class TestSimple < Test::Unit::TestCase
 	
 	def test_mux16
 		s = Simulation.new()
-		c = Multiplexer16.new(s)
+		c = Multiplexer16.new(s,"comp",nil)
 		
 		help_test_logic_table(s,c,		
 			{
@@ -421,7 +421,7 @@ class TestSimple < Test::Unit::TestCase
 	
 	def test_demux2
 		s = Simulation.new()
-		c = Demux2.new(s)
+		c = Demux2.new(s,"comp",nil)
 		help_test_logic_table(s,c,
 			{
 				[0,0] => [0,0],
@@ -434,7 +434,7 @@ class TestSimple < Test::Unit::TestCase
 	
 	def test_demux4
 		s = Simulation.new()
-		c = Demux4.new(s)
+		c = Demux4.new(s,"comp",nil)
 		help_test_logic_table(s,c,
 		{
 			[0,0,0] => [0,0,0,0],
@@ -450,7 +450,7 @@ class TestSimple < Test::Unit::TestCase
 
 	def test_demux8
 		s = Simulation.new()
-		c = Demux8.new(s)
+		c = Demux8.new(s,"comp",nil)
 		help_test_logic_table(s,c,
 			{
 				[0, 0,0,0] => [0,0,0,0,0,0,0,0],
@@ -466,7 +466,7 @@ class TestSimple < Test::Unit::TestCase
 	
 	def test_demux16
 		s = Simulation.new()
-		c = Demux16.new(s)
+		c = Demux16.new(s,"comp",nil)
 		help_test_logic_table(s,c,
 			{
 				[0,0,0,0,0] => [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
@@ -483,7 +483,7 @@ class TestSimple < Test::Unit::TestCase
 	
 	def test_ram8x8load
 		s = Simulation.new()
-		c = RAM8x8.new(s)	
+		c = RAM8x8.new(s,"comp",nil)	
 		
 		c.set_input_values([0,0,0,0,0,0,0,0,  0,0,0, 0])
 		c.override(["00000000","00000001","00000010","00000011","00000100","00000101","00000110","00000111"])
@@ -493,7 +493,7 @@ class TestSimple < Test::Unit::TestCase
 	
 	def test_ram8x64load
 		s = Simulation.new()
-		c = RAM8x64.new(s)
+		c = RAM8x64.new(s,"comp",nil)
 				
 		c.set_input_values([0,0,0,0,0,0,0,0,  0,0,0,0,0,0, 0])
 		c.load_file("debug64.txt")
@@ -503,7 +503,7 @@ class TestSimple < Test::Unit::TestCase
 	
 	def test_ram8x8
 		s = Simulation.new()
-		c = RAM8x8.new(s)							
+		c = RAM8x8.new(s,"comp",nil)							
 		#                 ## data               sel   ld
 		help_test_case(s,c,[0,0,0,0,0,0,0,0,  0,0,0, 0],[0,0,0,0,0,0,0,0]) # sanity check
 		help_test_case(s,c,[0,0,0,0,0,0,0,1,  0,0,0, 1],[0,0,0,0,0,0,0,1]) # load 1 into addr 0
@@ -520,7 +520,7 @@ class TestSimple < Test::Unit::TestCase
 	
 	def test_ram8x64
 		s = Simulation.new()
-		c = RAM8x64.new(s)	
+		c = RAM8x64.new(s,"comp",nil)	
 
 		c.load_file("debug64.txt")
 		
@@ -549,7 +549,7 @@ class TestSimple < Test::Unit::TestCase
 	
 	def test_ram8x256load
 		s = Simulation.new()
-		c = RAM8x256.new(s)	
+		c = RAM8x256.new(s,"comp",nil)	
 
 		c.load_file("debug256.txt")
 		#reads
@@ -578,7 +578,7 @@ class TestSimple < Test::Unit::TestCase
 	
 	def test_ram8x1024load
 		s = Simulation.new()
-		c = RAM8x1024.new(s)	
+		c = RAM8x1024.new(s,"comp",nil)	
 
 		c.load_file("debug1024.txt")  #19,8
 		#reads
@@ -605,9 +605,27 @@ class TestSimple < Test::Unit::TestCase
 		help_test_case(s,c,[1,0,0,0,0,1,1,0,  0,0,1,0,1,1,1,1,1,1, 1],[1,0,0,0,0,1,1,0])
 	end
 	
+	def test_rom8x1024load
+		s = Simulation.new()
+		c = ROM8x1024.new(s,"comp",nil)	
+
+		c.load_file("debug1024.txt")  #19,8
+		#reads
+		help_test_case(s,c,[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0]) 
+		help_test_case(s,c,[0,0,0,0,1,0,0,0,1,0],[0,0,1,0,0,0,1,0]) 
+		help_test_case(s,c,[0,0,0,0,1,0,0,1,0,1],[0,0,1,0,0,1,0,1]) 
+		help_test_case(s,c,[0,0,0,0,0,1,0,1,1,0],[0,0,0,1,0,1,1,0]) 
+		help_test_case(s,c,[0,0,0,0,1,1,1,1,1,1],[0,0,1,1,1,1,1,1])
+		help_test_case(s,c,[0,0,1,0,0,0,0,0,0,0],[1,0,0,0,0,0,0,0]) 
+		help_test_case(s,c,[0,0,0,1,1,0,0,0,1,0],[0,1,1,0,0,0,1,0]) 
+		help_test_case(s,c,[0,0,1,0,1,0,0,1,0,1],[1,0,1,0,0,1,0,1]) 
+		help_test_case(s,c,[0,0,0,1,0,1,0,1,1,0],[0,1,0,1,0,1,1,0]) 
+		help_test_case(s,c,[0,0,1,0,1,1,1,1,1,1],[1,0,1,1,1,1,1,1])
+	end
+	
 	def test_programcounter
 		s = Simulation.new()
-		c = ProgramCounter.new(s)
+		c = ProgramCounter.new(s,"comp",nil)
 		
 		
 				
@@ -627,24 +645,49 @@ class TestSimple < Test::Unit::TestCase
 	
 	def test_loopcounter
 		s = Simulation.new()
-		c = LoopCounter.new(s, 2)
+		c = LoopCounter.new(s, "comp", nil, 4)
 		
-		help_test_logic_table(s,c,
-			{
-				[0,0,0] => [0,0],
-				[0,0,0] => [0,1],
-				[0,0,0] => [1,0],
-				[0,0,0] => [1,1],
-				[0,0,0] => [0,0],
-				[0,0,0] => [0,1],
-				[0,0,0] => [1,0],
-				[0,0,0] => [1,1]
-			})
+		#                           J E Z
+		help_test_case(s,c,[0,0,0,0,0,0,0],[0,0,0,0])
+		help_test_case(s,c,[0,0,0,0,0,1,0],[0,0,0,1])
+		help_test_case(s,c,[0,0,0,0,0,1,0],[0,0,1,0])
+		help_test_case(s,c,[0,0,0,0,0,1,0],[0,0,1,1])
+		help_test_case(s,c,[0,0,0,0,0,1,0],[0,1,0,0])
+		help_test_case(s,c,[0,0,0,0,0,1,0],[0,1,0,1])
+		help_test_case(s,c,[0,0,0,0,0,1,0],[0,1,1,0])
+		help_test_case(s,c,[0,0,0,0,0,1,0],[0,1,1,1])			
 	end
+	
+	def test_loopcounterjump
+		s = Simulation.new()
+		c = LoopCounter.new(s, "comp", nil, 4)
+		
+		#                           J E Z
+		help_test_case(s,c,[0,0,0,0,0,0,0],[0,0,0,0])
+		help_test_case(s,c,[0,0,0,0,0,1,0],[0,0,0,1])
+		help_test_case(s,c,[0,0,0,0,0,1,0],[0,0,1,0])
+		help_test_case(s,c,[0,0,0,0,1,1,0],[0,0,0,0])
+		help_test_case(s,c,[0,0,0,0,0,1,0],[0,0,0,1])
+		help_test_case(s,c,[0,0,0,0,0,1,0],[0,0,1,0])
+	end
+	
+	def test_loopcounterzero
+		s = Simulation.new()
+		c = LoopCounter.new(s, "comp", nil, 4)
+		
+		#                           J E Z
+		help_test_case(s,c,[0,1,0,0,0,0,0],[0,0,0,0])
+		help_test_case(s,c,[0,1,0,0,0,1,0],[0,0,0,1])
+		help_test_case(s,c,[0,1,0,0,0,1,0],[0,0,1,0])
+		help_test_case(s,c,[0,1,0,0,0,1,1],[0,0,0,0])
+		help_test_case(s,c,[0,1,0,0,1,1,1],[0,0,0,0]) # zero overrides jump
+		help_test_case(s,c,[0,1,0,0,0,1,0],[0,0,0,1])
+		help_test_case(s,c,[0,1,0,0,0,1,0],[0,0,1,0])
+	end	
 	
 	def test_bus8x8
 		s = Simulation.new()
-		c = Bus8x8.new(s)
+		c = Bus8x8.new(s,"comp",nil)
 		
 		setup = [0,1,0,0,0,0,0,1, # 1
 			 0,1,0,0,0,0,1,0, # 2
@@ -666,7 +709,7 @@ class TestSimple < Test::Unit::TestCase
 	
 	def test_or4
 		s = Simulation.new()
-		c = OrGate4.new(s)
+		c = OrGate4.new(s,"comp",nil)
 		help_test_logic_table(s,c,
 		{
 			[0,0,0,0] => [0],
@@ -690,7 +733,7 @@ class TestSimple < Test::Unit::TestCase
 	
 	def test_encoder8x3
 		s = Simulation.new()
-		c = Encoder8x3.new(s)
+		c = Encoder8x3.new(s,"comp",nil)
 		help_test_logic_table(s,c,		
 			{
 			[0,0,0,0,0,0,0,0] => [0,0,0],  # hrm

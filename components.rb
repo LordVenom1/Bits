@@ -5,8 +5,9 @@
 # require 'set'
 
 class InputAbstract
-	def initialize
+	def initialize(owner)
 		@target = nil
+		@owner = owner
 	end
 	
 	def alias(input)
@@ -27,13 +28,14 @@ class InputAbstract
 	end	
 	
 	def to_s()
-		">#{@target.to_s}"
+		"#{owner.path}>#{@target.to_s}"
 	end
 end
 
 class InputPhysical
-	def initialize
+	def initialize(owner)
 		@target = nil
+		@owner = owner
 	end
 	
 	def check
@@ -46,7 +48,11 @@ class InputPhysical
 	end
 	
 	def get_value()
-		@target.get_value() # from output
+		begin
+			@target.get_value() # from output
+		rescue StandardError => ex
+			raise @owner.path + " - " + ex.to_s
+		end
 	end
 	
 	def to_s()
@@ -55,8 +61,9 @@ class InputPhysical
 end
 
 class OutputAbstract	
-	def initialize
-		@target = nil		
+	def initialize(owner)
+		@target = nil
+		@owner = owner		
 	end
 	
 	def alias(out)
@@ -86,9 +93,10 @@ class OutputAbstract
 end
 
 class OutputPhysical
-	def initialize
+	def initialize(owner)
 		# nil is a problem due to initial update trying to pull in nil values and replicate them forward
 		@value = false 
+		@owner = owner
 	end
 	
 	def set_value(v)
@@ -121,11 +129,12 @@ class Simulation
 	attr_reader :false_signal, :true_signal
 
 	def initialize()
+		# @root = TreeNode.new()
 		@components = []
 		@clock = Clock.new
 		
-		@false_signal = FalseSignal.new(self)
-		@true_signal = TrueSignal.new(self)
+		@false_signal = FalseSignal.new(self,"sim_false","sim")
+		@true_signal = TrueSignal.new(self,"sim_true","sim")
 	end			
 	
 	def to_s
@@ -217,16 +226,24 @@ end
 class Component
 
 	attr_reader :inputs, :outputs
+	attr_reader :label
+	
+	def path
+		(@parent ? @parent.path : "root") + "\\" + @label
+	end
 
-	def initialize(sim, num_inputs, num_outputs, abstract = true)	
+	def initialize(sim, label, parent, num_inputs, num_outputs, abstract = true)
 		@sim = sim
+		
+		@label = label
+		@parent = parent			
 
 		@inputs = Array.new(num_inputs)  do |idx|
-			(abstract ? InputAbstract.new() : InputPhysical.new())		
+			(abstract ? InputAbstract.new(self) : InputPhysical.new(self))		
 		end
 		
 		@outputs = Array.new(num_outputs) do |idx|
-			(abstract ? OutputAbstract.new() : OutputPhysical.new())
+			(abstract ? OutputAbstract.new(self) : OutputPhysical.new(self))
 		end
 		
 		@sim.register_component(self)
@@ -240,7 +257,7 @@ class Component
 			
 	def to_s
 		# print "displaying #{self.class.to_s}"
-		self.class.to_s + ":\n\tin:" + (0...@inputs.size).collect do |i|
+		@label + "(" + self.class.to_s + "):\n\tin:" + (0...@inputs.size).collect do |i|
 			
 			# puts "in: #{i}"
 			v = @inputs[i].get_value()
@@ -278,7 +295,7 @@ class Component
 		begin			
 			@inputs[idx].set_source(signal.outputs[0])
 		rescue StandardError => ex
-			raise "unable to set input value: #{self.class.to_s} #{idx} #{val} - " + ex.to_s
+			raise "unable to set input value: #{path} #{self.class.to_s} #{idx} #{val} - " + ex.to_s
 		end
 		
 	end
@@ -303,24 +320,11 @@ class Component
 		end
 	end
 	
-	def self.label_helper(labels, num_inputs)
-		# labels.each_with_index do |label,idx|
-			# define_method(label) do 
-				# @sim.get(@ports[idx])
-			# end
-			
-			# if idx < num_inputs then
-				# define_method(label.to_s + "=") do |val|
-					# set_input_pointer(@ports[idx], val ? Simulation::PORT_TRUE : Simulation::PORT_FALSE)
-				# end
-			# end
-		# end
-	end
 end
 
 class FalseSignal < Component
-	def initialize(sim)
-		super(sim,0,1,false)		
+	def initialize(sim, label, parent)
+		super(sim, label, parent,0,1,false)		
 		@outputs[0].set_value(false)
 	end
 	def update
@@ -328,8 +332,8 @@ class FalseSignal < Component
 end 
 
 class TrueSignal < Component
-	def initialize(sim)
-		super(sim,0,1,false)
+	def initialize(sim, label, parent)
+		super(sim, label, parent, 0, 1,false)
 		@outputs[0].set_value(true)
 	end
 	def update
@@ -337,8 +341,8 @@ class TrueSignal < Component
 end 
 
 class OrGate < Component
-	def initialize(sim)
-		super(sim,2,1,false)
+	def initialize(sim, label, parent)
+		super(sim, label, parent, 2,1,false)
 	end 
 	
 	def update	
@@ -346,20 +350,18 @@ class OrGate < Component
 		@outputs[0].set_value(@inputs[0].get_value() | @inputs[1].get_value())
 		@sim.mark_dirty if @outputs[0].get_value() != prev
 	end
-	
-	label_helper([:a,:b,:x], 2)
 end
 
 class OrGate4 < Component
-	def initialize(sim)
-		super(sim,4,1)
-		@o1 = OrGate.new(sim)
-		@o2 = OrGate.new(sim)
+	def initialize(sim, label, parent)
+		super(sim,label,parent,4,1)
+		@o1 = OrGate.new(sim, "or1", self)
+		@o2 = OrGate.new(sim, "or2", self)
 		@inputs[0].alias(@o1.inputs[0])
 		@inputs[1].alias(@o1.inputs[1])
 		@inputs[2].alias(@o2.inputs[0])
 		@inputs[3].alias(@o2.inputs[1])
-		@oc = OrGate.new(sim)
+		@oc = OrGate.new(sim, "oc", self)
 		@oc.inputs[0].set_source(@o1.outputs[0])
 		@oc.inputs[1].set_source(@o2.outputs[0])
 		@outputs[0].alias(@oc.outputs[0])
@@ -367,8 +369,8 @@ class OrGate4 < Component
 end
 
 class AndGate < Component
-	def initialize(sim)
-		super(sim,2,1,false)
+	def initialize(sim,label,parent)
+		super(sim,label,parent,2,1,false)
 	end 
 	
 	def update
@@ -376,13 +378,11 @@ class AndGate < Component
 		@outputs[0].set_value(@inputs[0].get_value() & @inputs[1].get_value())
 		@sim.mark_dirty if @outputs[0].get_value() != prev
 	end
-		
-	label_helper([:a,:b,:x], 2)
 end
 
 class NorGate < Component
-	def initialize(sim)
-		super(sim,2,1,false)
+	def initialize(sim,label,parent)
+		super(sim,label,parent,2,1,false)
 	end 
 	
 	def update	
@@ -390,13 +390,11 @@ class NorGate < Component
 		@outputs[0].set_value(!(@inputs[0].get_value() | @inputs[1].get_value()))
 		@sim.mark_dirty if @outputs[0].get_value() != prev
 	end
-	
-	label_helper([:a,:b,:x], 2)
 end
 
 class XorGate < Component
-	def initialize(sim)
-		super(sim,2,1,false)
+	def initialize(sim,label,parent)
+		super(sim,label,parent,2,1,false)
 	end 
 	
 	def update		
@@ -406,13 +404,11 @@ class XorGate < Component
 		@outputs[0].set_value((a | b) & (!(a & b)))
 		@sim.mark_dirty if @outputs[0].get_value() != prev
 	end
-	
-	label_helper([:a,:b,:x], 2)
 end
 
 class NandGate < Component
-	def initialize(sim)
-		super(sim,2,1,false)
+	def initialize(sim,label,parent)
+		super(sim,label,parent,2,1,false)
 	end 
 	
 	def update	
@@ -422,13 +418,11 @@ class NandGate < Component
 		@outputs[0].set_value(!(a & b))
 		@sim.mark_dirty if @outputs[0].get_value() != prev
 	end
-	
-	label_helper([:a,:b,:x], 2)
 end
 
 class NotGate < Component
-	def initialize(sim)
-		super(sim,1,1,false)
+	def initialize(sim,label,parent)
+		super(sim,label,parent,1,1,false)
 	end 
 	
 	def update
@@ -436,18 +430,16 @@ class NotGate < Component
 		@outputs[0].set_value(!@inputs[0].get_value())
 		@sim.mark_dirty if @outputs[0].get_value() != prev
 	end
-	
-	label_helper([:a,:x], 1)
 end
 
 ## not a real component
 class And4Gate < Component
-	 def initialize(sim)		
-		super(sim,4,1,true)		
+	 def initialize(sim,label,parent)		
+		super(sim,label,parent,4,1,true)		
 		
-		a1 = AndGate.new(sim)		
-		a2 = AndGate.new(sim)
-		ac = AndGate.new(sim)
+		a1 = AndGate.new(sim,"a1",self)		
+		a2 = AndGate.new(sim,"a2",self)
+		ac = AndGate.new(sim,"ac",self)
 		
 		ac.inputs[0].set_source(a1.outputs[0])
 		ac.inputs[1].set_source(a2.outputs[0])
@@ -463,13 +455,11 @@ class And4Gate < Component
 	# def to_s
 		# ['debug:',super,@comps[:a1].to_s,@comps[:a2].to_s,@comps[:ac].to_s].join("\n")
 	# end
-	
-	label_helper([:a,:b,:c,:d,:x], 4)
 end
 
 class BufferGate < Component
-	def initialize(sim)
-		super(sim,1,1,false)
+	def initialize(sim, label, parent)
+		super(sim,label,parent,1,1,false)
 	end 
 	
 	def update	
@@ -477,23 +467,20 @@ class BufferGate < Component
 		@outputs[0].set_value(@inputs[0].get_value())
 		@sim.mark_dirty if @outputs[0].get_value() != prev
 	end
-		
-	label_helper([:a,:x], 1)
 end
 
 class Bus8x8 < Component
-	def initialize(sim)
+	def initialize(sim,label,parent)
 		# 8 sets of 8-bit inputs from other components' outputs
 		# 8 select lines to determine which components should be output
-		super(sim,72,8)  # lets go
+		super(sim,label,parent,72,8)
 		
-		@enc = Encoder8x3.new(sim) # for converting the 8 select inputs to a 3-bit 
-		@m = Array.new(8) do Multiplexer8.new(sim) end
+		@enc = Encoder8x3.new(sim,"enc",self) # for converting the 8 select inputs to a 3-bit 
+		@m = Array.new(8) do |n| Multiplexer8.new(sim, "mux8_#{n}", self) end
 		(0...8).each do |idx|
 			@inputs[64 + idx].alias(@enc.inputs[7 - idx])
 			
 			(0...8).each do |j|
-				# puts "#{idx + j * 8} #{idx}.input #{j}"
 				@inputs[idx + j * 8].alias(@m[idx].inputs[j])				
 			end
 			
@@ -507,9 +494,9 @@ class Bus8x8 < Component
 end
 
 class BufferSet < Component
-	def initialize(sim, n)
-		super(sim,n,n)
-		@b = Array.new(n) do BufferGate.new(sim) end
+	def initialize(sim,label,parent,n)
+		super(sim,label,parent,n,n)
+		@b = Array.new(n) do |i| BufferGate.new(sim,"b#{i}",self) end
 		(0...n).each do |idx|
 			@inputs[idx].alias(@b[idx].inputs[0])
 			@outputs[idx].alias(@b[idx].outputs[0])
@@ -518,13 +505,13 @@ class BufferSet < Component
 end
 
 class Encoder8x3 < Component
-	def initialize(sim)
-		super(sim,8,3)
+	def initialize(sim,label,parent)
+		super(sim,label,parent,8,3)
 
-		@b = BufferSet.new(sim,8)
-		@bit2 = OrGate4.new(sim)
-		@bit1 = OrGate4.new(sim)
-		@bit0 = OrGate4.new(sim) #LSB
+		@b = BufferSet.new(sim,"b",self,8)
+		@bit2 = OrGate4.new(sim,"bit2",self)
+		@bit1 = OrGate4.new(sim,"bit1",self)
+		@bit0 = OrGate4.new(sim,"bit0",self) #LSB
 		
 		(0...8).each do |idx|
 			@inputs[idx].alias(@b.inputs[idx])
@@ -553,12 +540,10 @@ class Encoder8x3 < Component
 end
 
 class DataLatch < Component
-	def initialize(sim)
-		super(sim,1,1,false)
+	def initialize(sim,label,parent)
+		super(sim,label,parent,1,1,false)
 		sim.clock.register(self)
 	end 
-	
-	label_helper([:set,:value], 1)
 	
 	def pulse		
 		@outputs[0].set_value(@inputs[0].get_value())	
@@ -584,15 +569,15 @@ class DataLatch < Component
 end
 
 class Register < Component
-	def initialize(sim)
-		super(sim,2,1,true)  # load, enable (removed for now
+	def initialize(sim,label,parent)
+		super(sim,label,parent,2,1,true)  # load, enable (removed for now
 				
-		b = BufferGate.new(sim) # load
-		n = NotGate.new(sim)
-		a1 = AndGate.new(sim)
-		a2 = AndGate.new(sim)
-		o = OrGate.new(sim)
-		@dl = DataLatch.new(sim)
+		b = BufferGate.new(sim, "load", self) # load
+		n = NotGate.new(sim, "not", self)
+		a1 = AndGate.new(sim, "a1", self)
+		a2 = AndGate.new(sim, "a2", self)
+		o = OrGate.new(sim, "or", self)
+		@dl = DataLatch.new(sim, "datalatch", self)
 		
 		n.inputs[0].set_source(b.outputs[0])
 		
@@ -624,14 +609,14 @@ class Register < Component
 end
 		
 class RegisterN < Component
-	def initialize(sim, bits)
-		super(sim,bits + 1,bits)  # n bit, load.  deal with enabled downstream on input to bus?
+	def initialize(sim, label,parent,bits)
+		super(sim,label,parent,bits + 1,bits)  # n bit, load.  deal with enabled downstream on input to bus?
 		
 		@bits = bits
-		b = BufferGate.new(sim)
+		b = BufferGate.new(sim, "buffers", self)
 		@inputs[bits].alias(b.inputs[0])		
 		
-		@r = Array.new(bits) do Register.new(sim) end
+		@r = Array.new(bits) do Register.new(sim, "buffers", self) end
 		(0...bits).each do |idx|
 			@inputs[idx].alias(@r[idx].inputs[0])
 			@outputs[idx].alias(@r[idx].outputs[0])
@@ -653,21 +638,18 @@ class RegisterN < Component
 end
 
 class Register8 < Component
-	def initialize(sim)
-		super(sim,9,8)  # 8 bit, load.  deal with enabled downstream on input to bus?
+	def initialize(sim,label,parent)
+		super(sim,label,parent,9,8)  # 8 bit, load.  deal with enabled downstream on input to bus?
 		
-		b = BufferGate.new(sim)
+		b = BufferGate.new(sim, "b", self)
 		@inputs[8].alias(b.inputs[0])		
 		
-		@r = Array.new(8) do Register.new(sim) end
+		@r = Array.new(8) do |i| Register.new(sim, "reg#{i}", self) end
 		(0...8).each do |idx|
 			@inputs[idx].alias(@r[idx].inputs[0])
 			@outputs[idx].alias(@r[idx].outputs[0])
 			@r[idx].inputs[1].set_source(b.outputs[0])			
-		end		
-		
-		# @b = b
-		# @r = r
+		end
 	end
 	
 	def override(values)
@@ -684,10 +666,10 @@ class Register8 < Component
 end
 
 class FullAdder8 < Component
-	 def initialize(sim)		
-		super(sim,17,9)	# input: a + b, 17th = carry-in  output: 8 digits plus carry
+	 def initialize(sim,label,parent)		
+		super(sim,label,parent,17,9)	# input: a + b, 17th = carry-in  output: 8 digits plus carry
 		
-		@fa = Array.new(8) do FullAdder.new(sim)	end
+		@fa = Array.new(8) do |i| FullAdder.new(sim, "fa#{i}", self) end
 			
 		# carry in
 		@inputs[16].alias(@fa[7].inputs[2])
@@ -719,14 +701,14 @@ class FullAdder8 < Component
 end
 
 class FullAdderSub8 < Component
-	 def initialize(sim)		
-		super(sim,17,9,0)	# input: a + b, 17th = sub  output: 8 digits plus carry
+	 def initialize(sim,label,parent)		
+		super(sim,label,parent,17,9)	# input: a + b, 17th = sub  output: 8 digits plus carry
 		
 		
-		@fa = FullAdder8.new(sim)
+		@fa = FullAdder8.new(sim, "fa", self)
 		
-		@x = Array.new(8) do XorGate.new(sim) end
-		@b = BufferGate.new(sim) # subtraction
+		@x = Array.new(8) do |i| XorGate.new(sim, "x#{i}", self) end
+		@b = BufferGate.new(sim, "b", self) # subtraction
 
 		# connect a and xor to full adder
 		(0...8).each do |idx|
@@ -745,14 +727,14 @@ class FullAdderSub8 < Component
 end
 
 class HalfAdder < Component
-	 def initialize(sim)		
-		super(sim,2,2)
+	 def initialize(sim,label,parent)		
+		super(sim,label,parent,2,2)
 		
-		x = XorGate.new(sim)		
-		a = AndGate.new(sim)
+		x = XorGate.new(sim, "x", self)		
+		a = AndGate.new(sim, "a", self)
 
-		b1 = BufferGate.new(sim)
-		b2 = BufferGate.new(sim)
+		b1 = BufferGate.new(sim, "b1", self)
+		b2 = BufferGate.new(sim, "b2", self)
 		
 		x.inputs[0].set_source(b1.outputs[0])
 		x.inputs[1].set_source(b2.outputs[0])		
@@ -763,30 +745,24 @@ class HalfAdder < Component
 		@inputs[1].alias(b2.inputs[0])
 		@outputs[0].alias(x.outputs[0])
 		@outputs[1].alias(a.outputs[0])
-				
-		# @a = a
-		# @x = x
-		# @b1 = b1
-		# @b2 = b2
 	end
 	
 	# def to_s
 		# ['debug:',super,@x.to_s,@a.to_s,@b1.to_s,@b2.to_s].join("\n")
 	# end
-	
-	label_helper([:a,:b,:sum,:carry],2)
+
 end
 
 class FullAdder < Component
-	 def initialize(sim)		
-		super(sim,3,2)		
-		x1 = XorGate.new(sim)
-		x2 = XorGate.new(sim)
-		a1 = AndGate.new(sim)
-		a2 = AndGate.new(sim)
-		a3 = AndGate.new(sim)
-		o1 = OrGate.new(sim)
-		o2 = OrGate.new(sim)
+	 def initialize(sim,label,parent)		
+		super(sim,label,parent,3,2)		
+		x1 = XorGate.new(sim, "x1", self)
+		x2 = XorGate.new(sim, "x2", self)
+		a1 = AndGate.new(sim, "a1", self)
+		a2 = AndGate.new(sim, "a2", self)
+		a3 = AndGate.new(sim, "a3", self)
+		o1 = OrGate.new(sim, "o1", self)
+		o2 = OrGate.new(sim, "o2", self)
 		
 		x2.inputs[0].set_source(x1.outputs[0])
 			
@@ -795,9 +771,9 @@ class FullAdder < Component
 		o2.inputs[0].set_source(o1.outputs[0])
 		o2.inputs[1].set_source(a3.outputs[0])
 				
-		b1 = BufferGate.new(sim)
-		b2 = BufferGate.new(sim)
-		b3 = BufferGate.new(sim)
+		b1 = BufferGate.new(sim, "b1", self)
+		b2 = BufferGate.new(sim, "b2", self)
+		b3 = BufferGate.new(sim, "b3", self)
 		
 		@inputs[0].alias(b1.inputs[0])
 		@inputs[1].alias(b2.inputs[0])
@@ -820,33 +796,33 @@ class FullAdder < Component
 		
 	end
 	
-	label_helper([:a,:b,:c,:sum,:carry],3)
+
 end
 
 class Multiplexer2 < Component
-	def initialize(sim)
-		super(sim,3,1)
+	def initialize(sim, label, parent)
+		super(sim,label,parent,3,1)
 		
-		@b1 = BufferGate.new(sim) #d0
-		@b2 = BufferGate.new(sim) #d1
-		@b3 = BufferGate.new(sim) #sel
+		@b1 = BufferGate.new(sim, "b1", self) #d0
+		@b2 = BufferGate.new(sim, "b2", self) #d1
+		@b3 = BufferGate.new(sim, "b3", self) #sel
 		
 		@inputs[0].alias(@b1.inputs[0])
 		@inputs[1].alias(@b2.inputs[0])
 		@inputs[2].alias(@b3.inputs[0])
 		
-		@n1 = NotGate.new(sim)
+		@n1 = NotGate.new(sim, "n1", self)
 		@n1.inputs[0].set_source(@b3.outputs[0])
 		
-		@a1 = AndGate.new(sim)
-		@a2 = AndGate.new(sim)
+		@a1 = AndGate.new(sim, "a1", self)
+		@a2 = AndGate.new(sim, "a2", self)
 		
 		@a1.inputs[0].set_source(@b1.outputs[0])
 		@a1.inputs[1].set_source(@b3.outputs[0]) # first data line and sel = 0
 		@a2.inputs[0].set_source(@b2.outputs[0])
 		@a2.inputs[1].set_source(@n1.outputs[0]) # second line line and sel = 1
 		
-		@o = OrGate.new(sim)
+		@o = OrGate.new(sim, "or", self)
 		@o.inputs[0].set_source(@a1.outputs[0])  
 		@o.inputs[1].set_source(@a2.outputs[0])
 		
@@ -859,17 +835,17 @@ class Multiplexer2 < Component
 end
 
 class Multiplexer4 < Component
-	def initialize(sim)
-		super(sim,6,1)
-		@m1 = Multiplexer2.new(sim)
-		@m2 = Multiplexer2.new(sim)
-		@b = BufferGate.new(sim)
+	def initialize(sim,label,parent)
+		super(sim,label,parent,6,1)
+		@m1 = Multiplexer2.new(sim,"m1",self)
+		@m2 = Multiplexer2.new(sim,"m2",self)
+		@b = BufferGate.new(sim,"bg",self)
 		@inputs[5].alias(@b.inputs[0])
 		@inputs[0].alias(@m1.inputs[0])
 		@inputs[1].alias(@m1.inputs[1])
 		@inputs[2].alias(@m2.inputs[0])
 		@inputs[3].alias(@m2.inputs[1])
-		@mo = Multiplexer2.new(sim)
+		@mo = Multiplexer2.new(sim,"m_out",self)
 		@mo.inputs[0].set_source(@m1.outputs[0])
 		@mo.inputs[1].set_source(@m2.outputs[0])
 		@m1.inputs[2].set_source(@b.outputs[0])
@@ -886,13 +862,13 @@ class Multiplexer4 < Component
 end
 
 class Multiplexer8 < Component
-	def initialize(sim)
-		super(sim,11,1)
+	def initialize(sim,label,parent)
+		super(sim,label,parent,11,1)
 				
-		@m1 = Multiplexer4.new(sim)
-		@m2 = Multiplexer4.new(sim)
-		@b1 = BufferGate.new(sim)
-		@b2 = BufferGate.new(sim)
+		@m1 = Multiplexer4.new(sim, "m1", self)
+		@m2 = Multiplexer4.new(sim, "m2", self)
+		@b1 = BufferGate.new(sim, "b1", self)
+		@b2 = BufferGate.new(sim, "b2", self)
 		
 		@inputs[0].alias(@m1.inputs[0])
 		@inputs[1].alias(@m1.inputs[1])
@@ -907,7 +883,7 @@ class Multiplexer8 < Component
 		@inputs[9].alias(@b1.inputs[0])
 		@inputs[10].alias(@b2.inputs[0])
 		
-		@mo = Multiplexer2.new(sim)
+		@mo = Multiplexer2.new(sim, "m_out", self)
 		@mo.inputs[0].set_source(@m1.outputs[0])
 		@mo.inputs[1].set_source(@m2.outputs[0])
 		
@@ -926,11 +902,11 @@ class Multiplexer8 < Component
 end
 
 class Multiplexer16 < Component
-	def initialize(sim)
-		super(sim,20,1) # 16 inputs, 4 select
+	def initialize(sim,label,parent)
+		super(sim,label,parent,20,1) # 16 inputs, 4 select
 		
-		@m = Array.new(4) do Multiplexer4.new(sim) end
-		@addr = BufferSet.new(sim,4)
+		@m = Array.new(4) do |n| Multiplexer4.new(sim, "mux4_#{n}", self) end
+		@addr = BufferSet.new(sim,"addr", self,4)
 		
 		# map inputs into multiplexers
 		
@@ -946,7 +922,7 @@ class Multiplexer16 < Component
 		@inputs[18].alias(@addr.inputs[2])
 		@inputs[19].alias(@addr.inputs[3])
 		
-		@mo = Multiplexer4.new(sim)
+		@mo = Multiplexer4.new(sim, "mout", self)
 		@mo.inputs[0].set_source(@m[0].outputs[0])
 		@mo.inputs[1].set_source(@m[1].outputs[0])
 		@mo.inputs[2].set_source(@m[2].outputs[0])
@@ -968,19 +944,19 @@ class Multiplexer16 < Component
 end
 
 class Demux2 < Component
-	def initialize(sim)
-		super(sim,2,2) # data, sel		
-		sel = BufferGate.new(sim)
-		not_sel = NotGate.new(sim)
+	def initialize(sim,label,parent)
+		super(sim,label,parent,2,2) # data, sel		
+		sel = BufferGate.new(sim,"sel",self)
+		not_sel = NotGate.new(sim,"not_sel",self)
 		@inputs[1].alias(sel.inputs[0])
 		not_sel.inputs[0].set_source(sel.outputs[0])
 						
-		data = BufferGate.new(sim)
-		a1 = AndGate.new(sim)
+		data = BufferGate.new(sim, "data", self)
+		a1 = AndGate.new(sim, "a1", self)
 		@inputs[0].alias(data.inputs[0])
 		a1.inputs[0].set_source(data.outputs[0])
 		a1.inputs[1].set_source(not_sel.outputs[0])		
-		a2 = AndGate.new(sim)
+		a2 = AndGate.new(sim, "a2", self)
 		a2.inputs[0].set_source(data.outputs[0])
 		a2.inputs[1].set_source(sel.outputs[0])
 		
@@ -991,15 +967,15 @@ class Demux2 < Component
 end 
 
 class Demux4 < Component
-	def initialize(sim)
-		super(sim,3,4) # data, sel0, sel1 => out0, out1, out2, out3
+	def initialize(sim,label,parent)
+		super(sim,label,parent,3,4) # data, sel0, sel1 => out0, out1, out2, out3
 		
-		din = Demux2.new(sim)
-		d1 = Demux2.new(sim)
-		d2 = Demux2.new(sim)		
+		din = Demux2.new(sim, "data_in", self)
+		d1 = Demux2.new(sim, "d1", self)
+		d2 = Demux2.new(sim, "d2", self)		
 		@inputs[0].alias(din.inputs[0])
 		@inputs[1].alias(din.inputs[1])
-		sel1 = BufferGate.new(sim)
+		sel1 = BufferGate.new(sim, "sel", self)
 		@inputs[2].alias(sel1.inputs[0])
 		
 		d1.inputs[0].set_source(din.outputs[0])
@@ -1016,17 +992,17 @@ class Demux4 < Component
 end
 
 class Demux8 < Component
-	def initialize(sim)
-		super(sim,4,8) # data, sel0, sel1, sel2 => out0, out1, out2, out3
+	def initialize(sim,label,parent)
+		super(sim,label,parent,4,8) # data, sel0, sel1, sel2 => out0, out1, out2, out3
 		
-		din = Demux2.new(sim)
-		d1 = Demux4.new(sim)
-		d2 = Demux4.new(sim)		
+		din = Demux2.new(sim, "data_in", self)
+		d1 = Demux4.new(sim, "d1", self)
+		d2 = Demux4.new(sim, "d2", self)		
 		@inputs[0].alias(din.inputs[0])		
 		@inputs[1].alias(din.inputs[1])
 		
-		sel1 = BufferGate.new(sim)
-		sel2 = BufferGate.new(sim)
+		sel1 = BufferGate.new(sim, "sel1", self)
+		sel2 = BufferGate.new(sim, "sel2", self)
 		@inputs[2].alias(sel1.inputs[0])
 		@inputs[3].alias(sel2.inputs[0])
 		
@@ -1050,13 +1026,13 @@ class Demux8 < Component
 end	
 
 class Demux16 < Component
-	def initialize(sim)
-		super(sim,5,16) # data, addr (4) => out(16)
+	def initialize(sim,label,parent)
+		super(sim,label,parent,5,16) # data, addr (4) => out(16)
 		
-		@din = Demux4.new(sim)
-		@addr = BufferSet.new(sim,4)
+		@din = Demux4.new(sim,"data_in",self)
+		@addr = BufferSet.new(sim,"addr", self, 4)
 		
-		@d = Array.new(4) do Demux4.new(sim) end
+		@d = Array.new(4) do |n| Demux4.new(sim, "demux4_#{n}",self) end
 
 		(0...4).each do |idx| 
 			@inputs[1+idx].alias(@addr.inputs[idx])
@@ -1087,27 +1063,27 @@ end
 
 
 class RAM8x8 < Component
-	def initialize(sim)
-		super(sim,12,8) # 8 data bits, 3 select bits, load bit		
+	def initialize(sim,label,parent)
+		super(sim,label,parent,12,8) # 8 data bits, 3 select bits, load bit		
 		
-		@addr0 = BufferGate.new(sim)
-		@addr1 = BufferGate.new(sim)
-		@addr2 = BufferGate.new(sim)
+		@addr0 = BufferGate.new(sim,"addr0",self)
+		@addr1 = BufferGate.new(sim,"addr1",self)
+		@addr2 = BufferGate.new(sim,"addr2",self)
 		@inputs[8].alias(@addr0.inputs[0])
 		@inputs[9].alias(@addr1.inputs[0])
 		@inputs[10].alias(@addr2.inputs[0])
 		
-		@load = Demux8.new(sim)
+		@load = Demux8.new(sim,"load",self)
 		@inputs[11].alias(@load.inputs[0])
 		@load.inputs[1].set_source(@addr0.outputs[0])
 		@load.inputs[2].set_source(@addr1.outputs[0])
 		@load.inputs[3].set_source(@addr2.outputs[0])
 		
-		@data = Array.new(8) do BufferGate.new(sim) end
+		@data = Array.new(8) do |i| BufferGate.new(sim, "data#{i}", self) end
 		
 		# 8 bits
-		@m = Array.new(8) do Multiplexer8.new(sim) end  # 11/1
-		@r = Array.new(8) do Register8.new(sim) end  # 11/1
+		@m = Array.new(8) do |i| Multiplexer8.new(sim, "mux_#{i}", self) end  # 11/1
+		@r = Array.new(8) do |i | Register8.new(sim, "reg_#{i}", self) end  # 11/1
 		
 		(0...8).each do |idx|		
 			@inputs[idx].alias(@data[idx].inputs[0])
@@ -1153,11 +1129,11 @@ class RAM8x8 < Component
 end
 
 class RAM8x64 < Component
-	def initialize(sim)
-		super(sim, 15, 8) # 8 data, # 6 addr, 1 load bit		
+	def initialize(sim,label,parent)
+		super(sim,label,parent, 15, 8) # 8 data, # 6 addr, 1 load bit		
 		
-		@data = Array.new(8) do BufferGate.new(sim) end
-		@addr = Array.new(6) do BufferGate.new(sim) end
+		@data = Array.new(8) do |n| BufferGate.new(sim, "data#{n}",self) end
+		@addr = Array.new(6) do |n| BufferGate.new(sim, "addr#{n}",self) end
 		
 		(0...8).each do |idx|
 			@inputs[idx].alias(@data[idx].inputs[0])
@@ -1167,13 +1143,13 @@ class RAM8x64 < Component
 			@inputs[8 + idx].alias(@addr[idx].inputs[0])
 		end
 		
-		@load = Demux8.new(sim)
+		@load = Demux8.new(sim, "load", self)
 		@inputs[14].alias(@load.inputs[0])
 		@load.inputs[1].set_source(@addr[0].outputs[0])
 		@load.inputs[2].set_source(@addr[1].outputs[0])
 		@load.inputs[3].set_source(@addr[2].outputs[0])
 		
-		@r = Array.new(8) do RAM8x8.new(sim) end
+		@r = Array.new(8) do |n| RAM8x8.new(sim, "ram8x8_#{n}", self) end
 		(0...8).each do |idx|
 			(0...8).each do |j|
 				@r[idx].inputs[j].set_source(@data[j].outputs[0])
@@ -1184,7 +1160,7 @@ class RAM8x64 < Component
 			@r[idx].inputs[11].set_source(@load.outputs[7 - idx])  # output 0 is lsb for a demux			
 		end
 		
-		@m = Array.new(8) do Multiplexer8.new(sim) end  # 11/1
+		@m = Array.new(8) do |i| Multiplexer8.new(sim, "mux8_#{i}", self) end  # 11/1
 		(0...8).each do |idx|	
 			@m[idx].inputs[8].set_source(@addr[0].outputs[0])
 			@m[idx].inputs[9].set_source(@addr[1].outputs[0])
@@ -1225,21 +1201,21 @@ end
 
 class RAM8x256 < Component
 
-	def initialize(sim)
-		super(sim, 17, 8)
+	def initialize(sim,label,parent)
+		super(sim,label,parent, 17, 8)
 		# pass the 8 bits of data into each of the four 64 byte ram modules		
-		@data = Array.new(8) do BufferGate.new(sim) end
+		@data = Array.new(8) do |n| BufferGate.new(sim,"data#{n}",self) end
 		# pass the low 6 bits of address into each of the four 64 byte ram modules
-		@addr = Array.new(8) do BufferGate.new(sim) end
+		@addr = Array.new(8) do |n| BufferGate.new(sim,"addr#{n}",self) end
 		# use the remaining 2 bits to demux the load register into the correct of the 4 modules
 		# and again to an array of 8 muxes to use the output of the correct of the 4 modules
 		
-		@load = Demux4.new(sim) # 3/4
+		@load = Demux4.new(sim, "load", self) # 3/4
 		@inputs[16].alias(@load.inputs[0])
 		@load.inputs[1].set_source(@addr[0].outputs[0])
 		@load.inputs[2].set_source(@addr[1].outputs[0])
 		
-		@r = Array.new(4) do RAM8x64.new(sim) end
+		@r = Array.new(4) do |i| RAM8x64.new(sim, "ram8x64+#{i}", self) end
 			
 		(0...8).each do |idx|
 			@inputs[idx].alias(@data[idx].inputs[0])
@@ -1259,7 +1235,7 @@ class RAM8x256 < Component
 			@r[mi].inputs[14].set_source(@load.outputs[3 - mi])  # output 0 is lsb for a demux			
 		end
 		
-		@m = Array.new(8) do Multiplexer4.new(sim) end  # 6/1
+		@m = Array.new(8) do |i| Multiplexer4.new(sim, "mux4_#{i}", self) end  # 6/1
 		(0...8).each do |bi|	
 			@m[bi].inputs[4].set_source(@addr[0].outputs[0])
 			@m[bi].inputs[5].set_source(@addr[1].outputs[0])
@@ -1298,21 +1274,21 @@ end
 
 class RAM8x1024 < Component
 
-	def initialize(sim)
-		super(sim, 19, 8)  # 8 data, 10 address, load bit
+	def initialize(sim,label,parent)
+		super(sim,label,parent, 19, 8)  # 8 data, 10 address, load bit
 		# pass the 8 bits of data into each of the four 64 byte ram modules		
-		@data = BufferSet.new(sim,8)
+		@data = BufferSet.new(sim,"data",self,8)
 		# pass the low 8 bits of address into each of the four 64 byte ram modules
-		@addr = BufferSet.new(sim,10)
+		@addr = BufferSet.new(sim,"addr",self,10)
 		# use the remaining 2 bits to demux the load register into the correct of the 4 modules
 		# and again to an array of 8 muxes to use the output of the correct of the 4 modules
 		
-		@load = Demux4.new(sim) # 3/4
+		@load = Demux4.new(sim,"load",self) # 3/4
 		@inputs[18].alias(@load.inputs[0]) # load bit
 		@load.inputs[1].set_source(@addr.outputs[0])
 		@load.inputs[2].set_source(@addr.outputs[1])
 		
-		@r = Array.new(4) do RAM8x256.new(sim) end # 17 (8 data, 8 addr, 1 load) ,8
+		@r = Array.new(4) do |i| RAM8x256.new(sim,"ram8x256_#{i}",self) end # 17 (8 data, 8 addr, 1 load) ,8
 			
 		(0...8).each do |idx|
 			@inputs[idx].alias(@data.inputs[idx])
@@ -1337,7 +1313,75 @@ class RAM8x1024 < Component
 			@r[mi].inputs[16].set_source(@load.outputs[3 - mi])  # output 0 is lsb for a demux			
 		end
 		
-		@m = Array.new(8) do Multiplexer4.new(sim) end  # 6/1
+		@m = Array.new(8) do |i| Multiplexer4.new(sim,"mux4_#{i}",self) end  # 6/1
+		(0...8).each do |bi|	
+			@m[bi].inputs[4].set_source(@addr.outputs[0])
+			@m[bi].inputs[5].set_source(@addr.outputs[1])
+			(0...4).each do |mi|
+				@m[bi].inputs[mi].set_source(@r[3 - mi].outputs[bi])	
+			end	
+			@outputs[bi].alias(@m[bi].outputs[0])
+		end	
+	end
+	
+	def dump(off = 0)
+		# [@addr0.outputs[0],@addr1.outputs[0],@addr2.outputs[0]].collect do |o| o.get_value() ? '1' : '0' end.join("") + "\n" +
+		(0...@r.size).collect do |idx|		
+			@r[idx].dump(idx * 8)
+		end.join("\n")
+	end
+
+	def override(values)
+		raise 'bad input' unless values.size == 1024
+		idx = 0
+		# puts values.size
+		values.each_slice(256) do |chunk|
+			@r[idx].override(chunk)
+			idx += 1
+		end
+	end	
+	
+	def to_s
+		[super,@r.join("\n")]
+	end
+	
+	def load_file(filename)
+		override(File.readlines(filename).collect do |line| line.strip end)
+	end
+end
+
+class ROM8x1024 < Component
+
+	def initialize(sim,label,parent)
+		super(sim,label,parent, 10, 8)  # 10 address
+
+		# pass the low 8 bits of address into each of the four 64 byte ram modules
+		@addr = BufferSet.new(sim,"addr",self,10)
+		# use the remaining 2 bits to demux the load register into the correct of the 4 modules
+		# and again to an array of 8 muxes to use the output of the correct of the 4 modules
+		
+		@r = Array.new(4) do |i| RAM8x256.new(sim,"ram8x256_#{i}",self) end # 17 (8 data, 8 addr, 1 load) ,8
+			
+		(0...10).each do |ai|
+			@inputs[ai].alias(@addr.inputs[ai])
+		end
+			
+		(0...4).each do |mi|
+            (0...8).each do |bi|
+				@r[mi].inputs[bi].set_source(@sim.false_signal.outputs[0])
+			end
+			@r[mi].inputs[8].set_source(@addr.outputs[2]) 
+			@r[mi].inputs[9].set_source(@addr.outputs[3])
+			@r[mi].inputs[10].set_source(@addr.outputs[4])
+			@r[mi].inputs[11].set_source(@addr.outputs[5]) 
+			@r[mi].inputs[12].set_source(@addr.outputs[6])
+			@r[mi].inputs[13].set_source(@addr.outputs[7])			
+			@r[mi].inputs[14].set_source(@addr.outputs[8])
+			@r[mi].inputs[15].set_source(@addr.outputs[9])	
+			@r[mi].inputs[16].set_source(@sim.false_signal.outputs[0])		
+		end
+		
+		@m = Array.new(8) do |i| Multiplexer4.new(sim,"mux4_#{i}",self) end  # 6/1
 		(0...8).each do |bi|	
 			@m[bi].inputs[4].set_source(@addr.outputs[0])
 			@m[bi].inputs[5].set_source(@addr.outputs[1])
@@ -1376,15 +1420,15 @@ end
 
 
 class ProgramCounter < Component
-	def initialize(sim) 
-		super(sim,10,8) # 8 data, increment, jump
-		@r = Register8.new(sim) #9,8
-		@add = FullAdder8.new(sim)
+	def initialize(sim,label,parent) 
+		super(sim,label,parent,10,8) # 8 data, increment, jump
+		@r = Register8.new(sim, "reg", self) #9,8
+		@add = FullAdder8.new(sim, "add", self)
 		
-		@m = Array.new(8) do Multiplexer2.new(sim) end
+		@m = Array.new(8) do |i| Multiplexer2.new(sim, "mux2_#{i}", self) end
 					
-		@inc = BufferGate.new(sim)
-		@jmp = BufferGate.new(sim)
+		@inc = BufferGate.new(sim, "inc", self)
+		@jmp = BufferGate.new(sim, "jmp", self)
 			
 		(0...8).each do |idx|
 			@inputs[idx].alias(@m[idx].inputs[0])
@@ -1392,7 +1436,7 @@ class ProgramCounter < Component
 			@m[idx].inputs[1].set_source(@add.outputs[idx])
 			@r.inputs[idx].set_source(@m[idx].outputs[0])
 			@add.inputs[idx].set_source(@r.outputs[idx])
-			@add.inputs[8+idx].set_source(FalseSignal.new(sim).outputs[0]) # TODO: is this better/worse than @sim.false_signal? i feel like i did this on purpose...
+			@add.inputs[8+idx].set_source(@sim.false_signal.outputs[0]) # TODO: is this okay?
 			@m[idx].inputs[2].set_source(@jmp.outputs[0])
 		end
 		@inputs[8].alias(@inc.inputs[0])
@@ -1412,115 +1456,154 @@ class ProgramCounter < Component
 end
 
 class LoopCounter < Component
-	def initialize(sim, bits = 4)
-		super(sim, bits + 1, bits) # reset
+	def initialize(sim, label, parent, bits = 4)
+		super(sim, label, parent, bits + 3, bits) # jump, enable, zero
 		@bits = bits
 		
-		@reset = BufferGate.new(sim)
-		@inputs[bits].alias(@reset.inputs[0])
-				
-		@r = RegisterN.new(sim, bits)	
-		@m = Array.new(bits) do Multiplexer2.new(sim) end # 3/1
-		@add = Array.new(bits) do FullAdder.new(sim) end  # 3/2
+		@jump = BufferGate.new(sim, "jump", self)		
+		@inputs[bits].alias(@jump.inputs[0])
+		
+		@zero = BufferGate.new(sim, "zero", self)
+		@inputs[bits+2].alias(@zero.inputs[0])
+		
+		@r = RegisterN.new(sim, "reg", self, bits)	
+		@m = Array.new(bits) do |i| Multiplexer4.new(sim, "mux" + i.to_s, self) end # 6/1
+		@add = Array.new(bits) do |i| FullAdder.new(sim, "add" + i.to_s, self) end  # 3/2
 		
 		(0...bits).each do |bi|
-			@inputs[bi].alias(@m[bi].inputs[0])
+			@inputs[bi].alias(@m[bi].inputs[2])
 			
-			@m[bi].inputs[1].set_source(@add[bi].outputs[0])
-			@m[bi].inputs[2].set_source(@reset.outputs[0])
+			@m[bi].inputs[3].set_source(@add[bi].outputs[0])
+			@m[bi].inputs[0].set_source(@sim.false_signal.outputs[0]) # high bits are all zero to zero-jump
+			@m[bi].inputs[1].set_source(@sim.false_signal.outputs[0])
+			
+			@m[bi].inputs[4].set_source(@zero.outputs[0])
+			@m[bi].inputs[5].set_source(@jump.outputs[0])
 			
 			@add[bi].inputs[0].set_source(@r.outputs[bi])
 			@add[bi].inputs[1].set_source(@sim.false_signal.outputs[0]) # 2nd addend is zero
 			
+			@r.inputs[bi].set_source(@m[bi].outputs[0])
+			
 			@outputs[bi].alias(@r.outputs[bi])
 		end
+						
+		@inputs[bits+1].alias(@r.inputs[bits]) # enable
 		
-		@add[0].inputs[2].set_source(@sim.true_signal.outputs[0])# carry in 1 to LSB
-		(1...bits).each do |bi|
-			@add[bi].inputs[2].set_source(@add[bi-1].outputs[1])
+		@add[bits-1].inputs[2].set_source(@sim.true_signal.outputs[0])# carry in 1 to LSB
+		(0...(bits-1)).each do |bi|
+			@add[bi].inputs[2].set_source(@add[bi+1].outputs[1])
 		end
 	end
 	
 	def to_s
-		[super, @reset, @r, @m.join(""), @add.join("")]
+		[super, @jump, @zero, @r, @m.join(""), @add.join("")]
 	end
 end
 
 class Microcode < Component
-	def initialize()
-	# op code (8) + micro sequence (4) => set of control flags
+	def initialize(sim,label,parent, rom_in_filename, rom_out_filename)
+		super(sim, label,parent,10, 16)
+
+		@inst = BufferSet.new(@sim,"inst",self,6)
+		@cntr = BufferSet.new(@sim,"cntr",self,4)		
+		@rom_in = ROM8x1024.new(@sim, "microcodeROM_in", self)  # 8 data, 10 address, load bit
+		@rom_out = ROM8x1024.new(@sim, "microcodeROM_out", self)
+		@rom_in.load_file(rom_in_filename)
+		@rom_out.load_file(rom_out_filename)
 		
-	
+		(0...6).each do |idx|
+			@inputs[idx].alias(@inst.inputs[idx])
+			@rom_in.inputs[idx + 8].set_source(@inst.outputs[idx])
+			@rom_out.inputs[idx + 8].set_source(@inst.outputs[idx])
+			# 8 data, 10 address, load bit
+		end
+		(0...4).each do |idx|
+			@inputs[idx + 6].alias(@cntr.inputs[idx])
+			@rom_in.inputs[idx + 8 + 6].set_source(@cntr.outputs[idx])
+			@rom_out.inputs[idx + 8 + 6].set_source(@cntr.outputs[idx])
+		end
+		
+		(0...8).each do |idx|
+			@outputs[idx].alias(@rom_in.outputs[idx])
+			@outputs[idx + 8].alias(@rom_out.outputs[idx])
+			
+		end
 	
 	end
 end
 
 class Computer1
+	attr_reader :label
+	
+	def path
+		@label
+	end
+	
 	def initialize()
 		@sim = Simulation.new()
+		@label = "Computer1"
 	
 		f = @sim.false_signal.outputs[0]
-		t =  @sim.true_signal.outputs[0]
-		
+		t = @sim.true_signal.outputs[0]
 
-		@mar = Register8.new(@sim) # memory address register
-		@ram = RAM8x64.new(@sim) # 8 data + 6 addr + 1 enable
-		@pc = ProgramCounter.new(@sim) # 8 data, increment, jump
-		@a = Register8.new(@sim) # 8 data + 1 enable
-		@b = Register8.new(@sim) # 8 data + 1 enable
-		@alu = ALU8.new(@sim) # 8 data, 8 data, subtract  - 8 out
+		# @mar = Register8.new(@sim, "MAR", self) # memory address register
+		# @ram = RAM8x64.new(@sim, "RAM", self) # 8 data + 6 addr + 1 enable
+		# @pc = ProgramCounter.new(@sim, "PC", self) # 8 data, increment, jump
+		@a = Register8.new(@sim, "A", self) # 8 data + 1 enable
+		# @b = Register8.new(@sim, "B", self) # 8 data + 1 enable
+		# @alu = ALU8.new(@sim, "ALU", self) # 8 data, 8 data, subtract  - 8 out
 		
-		@ir = RegisterN.new(@sim,16) # instruction 9/8
-		@microinst = RAM8x256.new(@sim) # 4 bits opcodes, 4 bits cycle
-		@microcounter = ProgramCounter.new(@sim) # 
-		#@microcounter.inputs(
+		#@ir = RegisterN.new(@sim,"IR",self,14) # 6 inst, 8 # instruction 9/8
 		
-		# @flags = RegisterN.new(@sim, 4)  # TBD
+		#@ir.override("0000000000000")
+		@microcode = Microcode.new(@sim, "microcode", self, "computer1a.rom", "computer1b.rom") # 6 inst, 4 cntr > 16 outputs
+		(0...10).each do |idx| @microcode.inputs[idx].set_source(f) end
 		
-		super(sim,10,8) # 8 data, increment, jump
+		# @microcounter = LoopCounter.new(@sim,"microloop",self, 4) # 
 		
+		# @flags = RegisterN.new(@sim, 4)  # TBD				
+		# @control_out = BufferSet.new(@sim,8)
 		
-		@control_out = BufferSet.new(@sim,8)
-		
-		@bus = Bus8x8.new(@sim) 
+		# @bus = Bus8x8.new(@sim) 
 		#set bus inputs to low to avoid issues with unused sections
-		(0...72).each do |idx| @bus.inputs[idx].set_source(f) end 
+		# (0...72).each do |idx| @bus.inputs[idx].set_source(f) end 
 
-		(0...8).each do |idx| @bus.inputs[idx].set_source(@ram.outputs[idx]) end 
-		(0...8).each do |idx| @bus.inputs[8 + idx].set_source(@a.outputs[idx]) end 
-		(0...8).each do |idx| @bus.inputs[16 + idx].set_source(@b.outputs[idx]) end 
-		(0...8).each do |idx| @bus.inputs[24 + idx].set_source(@alu.outputs[idx]) end 
-		(0...8).each do |idx| @bus.inputs[32 + idx].set_source(@pc.outputs[idx]) end 
-		(0...8).each do |idx| @bus.inputs[40 + idx].set_source(@pc.outputs[idx]) end 
+		# (0...8).each do |idx| @bus.inputs[idx].set_source(@ram.outputs[idx]) end 
+		# (0...8).each do |idx| @bus.inputs[8 + idx].set_source(@a.outputs[idx]) end 
+		# (0...8).each do |idx| @bus.inputs[16 + idx].set_source(@b.outputs[idx]) end 
+		# (0...8).each do |idx| @bus.inputs[24 + idx].set_source(@alu.outputs[idx]) end 
+		# (0...8).each do |idx| @bus.inputs[32 + idx].set_source(@pc.outputs[idx]) end 
+		# (0...8).each do |idx| @bus.inputs[40 + idx].set_source(@pc.outputs[idx]) end 
 		
-		(0...8).each do |idx| @bus.inputs[64 + 7 - idx].set_source(@control_out.outputs[idx]) end 
+		# (0...8).each do |idx| @bus.inputs[64 + 7 - idx].set_source(@control_out.outputs[idx]) end 
 
-		(0...8).each do |idx| 
-			@ram.inputs[idx].set_source(@bus.outputs[idx])
-			@a.inputs[idx].set_source(@bus.outputs[idx])
-			@b.inputs[idx].set_source(@bus.outputs[idx])
-			@alu.inputs[idx].set_source(@bus.outputs[idx])
-			@pc.inputs[idx].set_source(@bus.outputs[idx])
-			@mar.inputs[idx].set_source(@bus.outputs[idx])
-		end
+		# (0...8).each do |idx| 
+			# @ram.inputs[idx].set_source(@bus.outputs[idx])
+			# @a.inputs[idx].set_source(@bus.outputs[idx])
+			# @b.inputs[idx].set_source(@bus.outputs[idx])
+			# @alu.inputs[idx].set_source(@bus.outputs[idx])
+			# @pc.inputs[idx].set_source(@bus.outputs[idx])
+			# @mar.inputs[idx].set_source(@bus.outputs[idx])
+		# end
 			
-		(0..8).each do |idx| @ram.inputs[idx + 8].set_source(@mar.outputs[idx]) end # addr + enable
-		@pc.inputs[8].set_source(t) # pc enable on
-		@pc.inputs[9].set_source(f) # jump off
-		@a.inputs[8].set_source(f)
-		@b.inputs[8].set_source(f)
-		(0...8).each do |idx| @alu.inputs[idx + 8].set_source(@b.outputs[idx]) end
-		@alu.inputs[16].set_source(f) # subtraction
-		@mar.inputs[8].set_source(f) # mar read from bus flag
+		# (0..8).each do |idx| @ram.inputs[idx + 8].set_source(@mar.outputs[idx]) end # addr + enable
+		# @pc.inputs[8].set_source(t) # pc enable on
+		# @pc.inputs[9].set_source(f) # jump off
+		# @a.inputs[8].set_source(f)
+		# @b.inputs[8].set_source(f)
+		# (0...8).each do |idx| @alu.inputs[idx + 8].set_source(@b.outputs[idx]) end
+		# @alu.inputs[16].set_source(f) # subtraction
+		# @mar.inputs[8].set_source(f) # mar read from bus flag
 
-		@control_out.inputs[0].set_source(f) # ram
-		@control_out.inputs[1].set_source(f) # a
-		@control_out.inputs[2].set_source(f) # b
-		@control_out.inputs[3].set_source(f) # alu
-		@control_out.inputs[4].set_source(t) # pc
-		@control_out.inputs[5].set_source(f)
-		@control_out.inputs[6].set_source(f)
-		@control_out.inputs[7].set_source(f)
+		# @control_out.inputs[0].set_source(f) # ram
+		# @control_out.inputs[1].set_source(f) # a
+		# @control_out.inputs[2].set_source(f) # b
+		# @control_out.inputs[3].set_source(f) # alu
+		# @control_out.inputs[4].set_source(t) # pc
+		# @control_out.inputs[5].set_source(f)
+		# @control_out.inputs[6].set_source(f)
+		# @control_out.inputs[7].set_source(f)
 	
 	end
 	
