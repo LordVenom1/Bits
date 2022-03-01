@@ -1,0 +1,7 @@
+SET value = 30
+SET plus = 10
+LDA value
+LDB plus
+ADD
+SUB
+SUB

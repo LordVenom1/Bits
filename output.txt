@@ -1,0 +1,780 @@
+Computer 1 start:
+  A: 00000000 (0)  B: 00000000 (0)
+ALU: 00000000 (0)
+BUS: 00000000 (0)
+
+MAR: 00000000
+RAM: 00000100 (4)
+
+PC:  00000000 (0)
+IR:    000000 (RESET) 0000
+
+
+             M   J   M R                       A S   R     
+             A C M I C A                     P L U   A     
+         A B R E P R Z M               A B   C U B   M     
+CTL RECV:0 0 1 0 0 0 0 0     CTL SEND: 0 0 0 1 0 0 0 0
+Computer 1 before:
+  A: 00000000 (0)  B: 00000000 (0)
+ALU: 00000000 (0)
+BUS: 00000100 (4)
+
+MAR: 00000000
+RAM: 00000100 (4)
+
+PC:  00000000 (0)
+IR:    000000 (RESET) 0001
+
+
+             M   J   M R                       A S   R     
+             A C M I C A                     P L U   A     
+         A B R E P R Z M               A B   C U B   M     
+CTL RECV:0 0 0 1 0 1 0 0     CTL SEND: 0 0 0 0 0 0 0 1
+Computer 1 after:
+  A: 00000000 (0)  B: 00000000 (0)
+ALU: 00000000 (0)
+BUS: 00000100 (4)
+
+MAR: 00000000
+RAM: 00000100 (4)
+
+PC:  00000001 (1)
+IR:    000100 (LDA) 0001
+
+
+             M   J   M R                       A S   R     
+             A C M I C A                     P L U   A     
+         A B R E P R Z M               A B   C U B   M     
+CTL RECV:0 0 0 1 0 1 0 0     CTL SEND: 0 0 0 0 0 0 0 1
+Computer 1 before:
+  A: 00000000 (0)  B: 00000000 (0)
+ALU: 00000000 (0)
+BUS: 00000001 (1)
+
+MAR: 00000000
+RAM: 00000100 (4)
+
+PC:  00000001 (1)
+IR:    000100 (LDA) 0010
+
+
+             M   J   M R                       A S   R     
+             A C M I C A                     P L U   A     
+         A B R E P R Z M               A B   C U B   M     
+CTL RECV:0 0 1 0 0 0 0 0     CTL SEND: 0 0 0 1 0 0 0 0
+Computer 1 after:
+  A: 00000000 (0)  B: 00000000 (0)
+ALU: 00000000 (0)
+BUS: 00000001 (1)
+
+MAR: 00000001
+RAM: 11001001 (201)
+
+PC:  00000001 (1)
+IR:    000100 (LDA) 0010
+
+
+             M   J   M R                       A S   R     
+             A C M I C A                     P L U   A     
+         A B R E P R Z M               A B   C U B   M     
+CTL RECV:0 0 1 0 0 0 0 0     CTL SEND: 0 0 0 1 0 0 0 0
+Computer 1 before:
+  A: 00000000 (0)  B: 00000000 (0)
+ALU: 00000000 (0)
+BUS: 11001001 (201)
+
+MAR: 00000001
+RAM: 11001001 (201)
+
+PC:  00000001 (1)
+IR:    000100 (LDA) 0011
+
+
+             M   J   M R                       A S   R     
+             A C M I C A                     P L U   A     
+         A B R E P R Z M               A B   C U B   M     
+CTL RECV:0 0 1 1 0 0 0 0     CTL SEND: 0 0 0 0 0 0 0 1
+Computer 1 after:
+  A: 00000000 (0)  B: 00000000 (0)
+ALU: 00000000 (0)
+BUS: 00011110 (30)
+
+MAR: 11001001
+RAM: 00011110 (30)
+
+PC:  00000010 (2)
+IR:    000100 (LDA) 0011
+
+
+             M   J   M R                       A S   R     
+             A C M I C A                     P L U   A     
+         A B R E P R Z M               A B   C U B   M     
+CTL RECV:0 0 1 1 0 0 0 0     CTL SEND: 0 0 0 0 0 0 0 1
+Computer 1 before:
+  A: 00000000 (0)  B: 00000000 (0)
+ALU: 00000000 (0)
+BUS: 00011110 (30)
+
+MAR: 11001001
+RAM: 00011110 (30)
+
+PC:  00000010 (2)
+IR:    000100 (LDA) 0100
+
+
+             M   J   M R                       A S   R     
+             A C M I C A                     P L U   A     
+         A B R E P R Z M               A B   C U B   M     
+CTL RECV:1 0 0 0 0 0 1 0     CTL SEND: 0 0 0 0 0 0 0 1
+Computer 1 after:
+  A: 00011110 (30)  B: 00000000 (0)
+ALU: 00011110 (30)
+BUS: 00011110 (30)
+
+MAR: 11001001
+RAM: 00011110 (30)
+
+PC:  00000010 (2)
+IR:    000100 (LDA) 0100
+
+
+             M   J   M R                       A S   R     
+             A C M I C A                     P L U   A     
+         A B R E P R Z M               A B   C U B   M     
+CTL RECV:1 0 0 0 0 0 1 0     CTL SEND: 0 0 0 0 0 0 0 1
+Computer 1 before:
+  A: 00011110 (30)  B: 00000000 (0)
+ALU: 00011110 (30)
+BUS: 00000010 (2)
+
+MAR: 11001001
+RAM: 00011110 (30)
+
+PC:  00000010 (2)
+IR:    000100 (LDA) 0000
+
+
+             M   J   M R                       A S   R     
+             A C M I C A                     P L U   A     
+         A B R E P R Z M               A B   C U B   M     
+CTL RECV:0 0 1 0 0 0 0 0     CTL SEND: 0 0 0 1 0 0 0 0
+Computer 1 after:
+  A: 00011110 (30)  B: 00000000 (0)
+ALU: 00011110 (30)
+BUS: 00000010 (2)
+
+MAR: 00000010
+RAM: 00000101 (5)
+
+PC:  00000010 (2)
+IR:    000100 (LDA) 0000
+
+
+             M   J   M R                       A S   R     
+             A C M I C A                     P L U   A     
+         A B R E P R Z M               A B   C U B   M     
+CTL RECV:0 0 1 0 0 0 0 0     CTL SEND: 0 0 0 1 0 0 0 0
+Computer 1 before:
+  A: 00011110 (30)  B: 00000000 (0)
+ALU: 00011110 (30)
+BUS: 00000101 (5)
+
+MAR: 00000010
+RAM: 00000101 (5)
+
+PC:  00000010 (2)
+IR:    000100 (LDA) 0001
+
+
+             M   J   M R                       A S   R     
+             A C M I C A                     P L U   A     
+         A B R E P R Z M               A B   C U B   M     
+CTL RECV:0 0 0 1 0 1 0 0     CTL SEND: 0 0 0 0 0 0 0 1
+Computer 1 after:
+  A: 00011110 (30)  B: 00000000 (0)
+ALU: 00011110 (30)
+BUS: 00000101 (5)
+
+MAR: 00000010
+RAM: 00000101 (5)
+
+PC:  00000011 (3)
+IR:    000101 (LDB) 0001
+
+
+             M   J   M R                       A S   R     
+             A C M I C A                     P L U   A     
+         A B R E P R Z M               A B   C U B   M     
+CTL RECV:0 0 0 1 0 1 0 0     CTL SEND: 0 0 0 0 0 0 0 1
+Computer 1 before:
+  A: 00011110 (30)  B: 00000000 (0)
+ALU: 00011110 (30)
+BUS: 00000011 (3)
+
+MAR: 00000010
+RAM: 00000101 (5)
+
+PC:  00000011 (3)
+IR:    000101 (LDB) 0010
+
+
+             M   J   M R                       A S   R     
+             A C M I C A                     P L U   A     
+         A B R E P R Z M               A B   C U B   M     
+CTL RECV:0 0 1 0 0 0 0 0     CTL SEND: 0 0 0 1 0 0 0 0
+Computer 1 after:
+  A: 00011110 (30)  B: 00000000 (0)
+ALU: 00011110 (30)
+BUS: 00000011 (3)
+
+MAR: 00000011
+RAM: 11001010 (202)
+
+PC:  00000011 (3)
+IR:    000101 (LDB) 0010
+
+
+             M   J   M R                       A S   R     
+             A C M I C A                     P L U   A     
+         A B R E P R Z M               A B   C U B   M     
+CTL RECV:0 0 1 0 0 0 0 0     CTL SEND: 0 0 0 1 0 0 0 0
+Computer 1 before:
+  A: 00011110 (30)  B: 00000000 (0)
+ALU: 00011110 (30)
+BUS: 11001010 (202)
+
+MAR: 00000011
+RAM: 11001010 (202)
+
+PC:  00000011 (3)
+IR:    000101 (LDB) 0011
+
+
+             M   J   M R                       A S   R     
+             A C M I C A                     P L U   A     
+         A B R E P R Z M               A B   C U B   M     
+CTL RECV:0 0 1 1 0 0 0 0     CTL SEND: 0 0 0 0 0 0 0 1
+Computer 1 after:
+  A: 00011110 (30)  B: 00000000 (0)
+ALU: 00011110 (30)
+BUS: 00001010 (10)
+
+MAR: 11001010
+RAM: 00001010 (10)
+
+PC:  00000100 (4)
+IR:    000101 (LDB) 0011
+
+
+             M   J   M R                       A S   R     
+             A C M I C A                     P L U   A     
+         A B R E P R Z M               A B   C U B   M     
+CTL RECV:0 0 1 1 0 0 0 0     CTL SEND: 0 0 0 0 0 0 0 1
+Computer 1 before:
+  A: 00011110 (30)  B: 00000000 (0)
+ALU: 00011110 (30)
+BUS: 00001010 (10)
+
+MAR: 11001010
+RAM: 00001010 (10)
+
+PC:  00000100 (4)
+IR:    000101 (LDB) 0100
+
+
+             M   J   M R                       A S   R     
+             A C M I C A                     P L U   A     
+         A B R E P R Z M               A B   C U B   M     
+CTL RECV:0 1 0 0 0 0 1 0     CTL SEND: 0 0 0 0 0 0 0 1
+Computer 1 after:
+  A: 00011110 (30)  B: 00001010 (10)
+ALU: 00101000 (40)
+BUS: 00001010 (10)
+
+MAR: 11001010
+RAM: 00001010 (10)
+
+PC:  00000100 (4)
+IR:    000101 (LDB) 0100
+
+
+             M   J   M R                       A S   R     
+             A C M I C A                     P L U   A     
+         A B R E P R Z M               A B   C U B   M     
+CTL RECV:0 1 0 0 0 0 1 0     CTL SEND: 0 0 0 0 0 0 0 1
+Computer 1 before:
+  A: 00011110 (30)  B: 00001010 (10)
+ALU: 00101000 (40)
+BUS: 00000100 (4)
+
+MAR: 11001010
+RAM: 00001010 (10)
+
+PC:  00000100 (4)
+IR:    000101 (LDB) 0000
+
+
+             M   J   M R                       A S   R     
+             A C M I C A                     P L U   A     
+         A B R E P R Z M               A B   C U B   M     
+CTL RECV:0 0 1 0 0 0 0 0     CTL SEND: 0 0 0 1 0 0 0 0
+Computer 1 after:
+  A: 00011110 (30)  B: 00001010 (10)
+ALU: 00101000 (40)
+BUS: 00000100 (4)
+
+MAR: 00000100
+RAM: 00100000 (32)
+
+PC:  00000100 (4)
+IR:    000101 (LDB) 0000
+
+
+             M   J   M R                       A S   R     
+             A C M I C A                     P L U   A     
+         A B R E P R Z M               A B   C U B   M     
+CTL RECV:0 0 1 0 0 0 0 0     CTL SEND: 0 0 0 1 0 0 0 0
+Computer 1 before:
+  A: 00011110 (30)  B: 00001010 (10)
+ALU: 00101000 (40)
+BUS: 00100000 (32)
+
+MAR: 00000100
+RAM: 00100000 (32)
+
+PC:  00000100 (4)
+IR:    000101 (LDB) 0001
+
+
+             M   J   M R                       A S   R     
+             A C M I C A                     P L U   A     
+         A B R E P R Z M               A B   C U B   M     
+CTL RECV:0 0 0 1 0 1 0 0     CTL SEND: 0 0 0 0 0 0 0 1
+Computer 1 after:
+  A: 00011110 (30)  B: 00001010 (10)
+ALU: 00101000 (40)
+BUS: 00100000 (32)
+
+MAR: 00000100
+RAM: 00100000 (32)
+
+PC:  00000101 (5)
+IR:    100000 (ADD) 0001
+
+
+             M   J   M R                       A S   R     
+             A C M I C A                     P L U   A     
+         A B R E P R Z M               A B   C U B   M     
+CTL RECV:0 0 0 1 0 1 0 0     CTL SEND: 0 0 0 0 0 0 0 1
+Computer 1 before:
+  A: 00011110 (30)  B: 00001010 (10)
+ALU: 00101000 (40)
+BUS: 00101000 (40)
+
+MAR: 00000100
+RAM: 00100000 (32)
+
+PC:  00000101 (5)
+IR:    100000 (ADD) 0010
+
+
+             M   J   M R                       A S   R     
+             A C M I C A                     P L U   A     
+         A B R E P R Z M               A B   C U B   M     
+CTL RECV:1 0 0 0 0 0 1 0     CTL SEND: 0 0 0 0 1 0 0 0
+Computer 1 after:
+  A: 00101000 (40)  B: 00001010 (10)
+ALU: 00110010 (50)
+BUS: 00110010 (50)
+
+MAR: 00000100
+RAM: 00100000 (32)
+
+PC:  00000101 (5)
+IR:    100000 (ADD) 0010
+
+
+             M   J   M R                       A S   R     
+             A C M I C A                     P L U   A     
+         A B R E P R Z M               A B   C U B   M     
+CTL RECV:1 0 0 0 0 0 1 0     CTL SEND: 0 0 0 0 1 0 0 0
+Computer 1 before:
+  A: 00101000 (40)  B: 00001010 (10)
+ALU: 00110010 (50)
+BUS: 00000101 (5)
+
+MAR: 00000100
+RAM: 00100000 (32)
+
+PC:  00000101 (5)
+IR:    100000 (ADD) 0000
+
+
+             M   J   M R                       A S   R     
+             A C M I C A                     P L U   A     
+         A B R E P R Z M               A B   C U B   M     
+CTL RECV:0 0 1 0 0 0 0 0     CTL SEND: 0 0 0 1 0 0 0 0
+Computer 1 after:
+  A: 00101000 (40)  B: 00001010 (10)
+ALU: 00110010 (50)
+BUS: 00000101 (5)
+
+MAR: 00000101
+RAM: 00100001 (33)
+
+PC:  00000101 (5)
+IR:    100000 (ADD) 0000
+
+
+             M   J   M R                       A S   R     
+             A C M I C A                     P L U   A     
+         A B R E P R Z M               A B   C U B   M     
+CTL RECV:0 0 1 0 0 0 0 0     CTL SEND: 0 0 0 1 0 0 0 0
+Computer 1 before:
+  A: 00101000 (40)  B: 00001010 (10)
+ALU: 00110010 (50)
+BUS: 00100001 (33)
+
+MAR: 00000101
+RAM: 00100001 (33)
+
+PC:  00000101 (5)
+IR:    100000 (ADD) 0001
+
+
+             M   J   M R                       A S   R     
+             A C M I C A                     P L U   A     
+         A B R E P R Z M               A B   C U B   M     
+CTL RECV:0 0 0 1 0 1 0 0     CTL SEND: 0 0 0 0 0 0 0 1
+Computer 1 after:
+  A: 00101000 (40)  B: 00001010 (10)
+ALU: 00110010 (50)
+BUS: 00100001 (33)
+
+MAR: 00000101
+RAM: 00100001 (33)
+
+PC:  00000110 (6)
+IR:    100001 (SUB) 0001
+
+
+             M   J   M R                       A S   R     
+             A C M I C A                     P L U   A     
+         A B R E P R Z M               A B   C U B   M     
+CTL RECV:0 0 0 1 0 1 0 0     CTL SEND: 0 0 0 0 0 0 0 1
+Computer 1 before:
+  A: 00101000 (40)  B: 00001010 (10)
+ALU: 00011110 (30)
+BUS: 00011110 (30)
+
+MAR: 00000101
+RAM: 00100001 (33)
+
+PC:  00000110 (6)
+IR:    100001 (SUB) 0010
+
+
+             M   J   M R                       A S   R     
+             A C M I C A                     P L U   A     
+         A B R E P R Z M               A B   C U B   M     
+CTL RECV:1 0 0 0 0 0 1 0     CTL SEND: 0 0 0 0 1 1 0 0
+Computer 1 after:
+  A: 00011110 (30)  B: 00001010 (10)
+ALU: 00010100 (20)
+BUS: 00010100 (20)
+
+MAR: 00000101
+RAM: 00100001 (33)
+
+PC:  00000110 (6)
+IR:    100001 (SUB) 0010
+
+
+             M   J   M R                       A S   R     
+             A C M I C A                     P L U   A     
+         A B R E P R Z M               A B   C U B   M     
+CTL RECV:1 0 0 0 0 0 1 0     CTL SEND: 0 0 0 0 1 1 0 0
+Computer 1 before:
+  A: 00011110 (30)  B: 00001010 (10)
+ALU: 00101000 (40)
+BUS: 00000110 (6)
+
+MAR: 00000101
+RAM: 00100001 (33)
+
+PC:  00000110 (6)
+IR:    100001 (SUB) 0000
+
+
+             M   J   M R                       A S   R     
+             A C M I C A                     P L U   A     
+         A B R E P R Z M               A B   C U B   M     
+CTL RECV:0 0 1 0 0 0 0 0     CTL SEND: 0 0 0 1 0 0 0 0
+Computer 1 after:
+  A: 00011110 (30)  B: 00001010 (10)
+ALU: 00101000 (40)
+BUS: 00000110 (6)
+
+MAR: 00000110
+RAM: 00100001 (33)
+
+PC:  00000110 (6)
+IR:    100001 (SUB) 0000
+
+
+             M   J   M R                       A S   R     
+             A C M I C A                     P L U   A     
+         A B R E P R Z M               A B   C U B   M     
+CTL RECV:0 0 1 0 0 0 0 0     CTL SEND: 0 0 0 1 0 0 0 0
+Computer 1 before:
+  A: 00011110 (30)  B: 00001010 (10)
+ALU: 00101000 (40)
+BUS: 00100001 (33)
+
+MAR: 00000110
+RAM: 00100001 (33)
+
+PC:  00000110 (6)
+IR:    100001 (SUB) 0001
+
+
+             M   J   M R                       A S   R     
+             A C M I C A                     P L U   A     
+         A B R E P R Z M               A B   C U B   M     
+CTL RECV:0 0 0 1 0 1 0 0     CTL SEND: 0 0 0 0 0 0 0 1
+Computer 1 after:
+  A: 00011110 (30)  B: 00001010 (10)
+ALU: 00101000 (40)
+BUS: 00100001 (33)
+
+MAR: 00000110
+RAM: 00100001 (33)
+
+PC:  00000111 (7)
+IR:    100001 (SUB) 0001
+
+
+             M   J   M R                       A S   R     
+             A C M I C A                     P L U   A     
+         A B R E P R Z M               A B   C U B   M     
+CTL RECV:0 0 0 1 0 1 0 0     CTL SEND: 0 0 0 0 0 0 0 1
+Computer 1 before:
+  A: 00011110 (30)  B: 00001010 (10)
+ALU: 00010100 (20)
+BUS: 00010100 (20)
+
+MAR: 00000110
+RAM: 00100001 (33)
+
+PC:  00000111 (7)
+IR:    100001 (SUB) 0010
+
+
+             M   J   M R                       A S   R     
+             A C M I C A                     P L U   A     
+         A B R E P R Z M               A B   C U B   M     
+CTL RECV:1 0 0 0 0 0 1 0     CTL SEND: 0 0 0 0 1 1 0 0
+Computer 1 after:
+  A: 00010100 (20)  B: 00001010 (10)
+ALU: 00001010 (10)
+BUS: 00001010 (10)
+
+MAR: 00000110
+RAM: 00100001 (33)
+
+PC:  00000111 (7)
+IR:    100001 (SUB) 0010
+
+
+             M   J   M R                       A S   R     
+             A C M I C A                     P L U   A     
+         A B R E P R Z M               A B   C U B   M     
+CTL RECV:1 0 0 0 0 0 1 0     CTL SEND: 0 0 0 0 1 1 0 0
+Computer 1 before:
+  A: 00010100 (20)  B: 00001010 (10)
+ALU: 00011110 (30)
+BUS: 00000111 (7)
+
+MAR: 00000110
+RAM: 00100001 (33)
+
+PC:  00000111 (7)
+IR:    100001 (SUB) 0000
+
+
+             M   J   M R                       A S   R     
+             A C M I C A                     P L U   A     
+         A B R E P R Z M               A B   C U B   M     
+CTL RECV:0 0 1 0 0 0 0 0     CTL SEND: 0 0 0 1 0 0 0 0
+Computer 1 after:
+  A: 00010100 (20)  B: 00001010 (10)
+ALU: 00011110 (30)
+BUS: 00000111 (7)
+
+MAR: 00000111
+RAM: 00000000 (0)
+
+PC:  00000111 (7)
+IR:    100001 (SUB) 0000
+
+
+             M   J   M R                       A S   R     
+             A C M I C A                     P L U   A     
+         A B R E P R Z M               A B   C U B   M     
+CTL RECV:0 0 1 0 0 0 0 0     CTL SEND: 0 0 0 1 0 0 0 0
+Computer 1 before:
+  A: 00010100 (20)  B: 00001010 (10)
+ALU: 00011110 (30)
+BUS: 00000000 (0)
+
+MAR: 00000111
+RAM: 00000000 (0)
+
+PC:  00000111 (7)
+IR:    100001 (SUB) 0001
+
+
+             M   J   M R                       A S   R     
+             A C M I C A                     P L U   A     
+         A B R E P R Z M               A B   C U B   M     
+CTL RECV:0 0 0 1 0 1 0 0     CTL SEND: 0 0 0 0 0 0 0 1
+Computer 1 after:
+  A: 00010100 (20)  B: 00001010 (10)
+ALU: 00011110 (30)
+BUS: 00000000 (0)
+
+MAR: 00000111
+RAM: 00000000 (0)
+
+PC:  00001000 (8)
+IR:    000000 (RESET) 0001
+
+
+             M   J   M R                       A S   R     
+             A C M I C A                     P L U   A     
+         A B R E P R Z M               A B   C U B   M     
+CTL RECV:0 0 0 1 0 1 0 0     CTL SEND: 0 0 0 0 0 0 0 1
+Computer 1 before:
+  A: 00010100 (20)  B: 00001010 (10)
+ALU: 00011110 (30)
+BUS: 00000000 (0)
+
+MAR: 00000111
+RAM: 00000000 (0)
+
+PC:  00001000 (8)
+IR:    000000 (RESET) 0010
+
+
+             M   J   M R                       A S   R     
+             A C M I C A                     P L U   A     
+         A B R E P R Z M               A B   C U B   M     
+CTL RECV:1 1 0 1 1 0 1 0     CTL SEND: 0 0 0 0 0 0 0 1
+Computer 1 after:
+  A: 00000000 (0)  B: 00000000 (0)
+ALU: 00000000 (0)
+BUS: 00000000 (0)
+
+MAR: 00000111
+RAM: 00000000 (0)
+
+PC:  00000000 (0)
+IR:    000000 (RESET) 0010
+
+
+             M   J   M R                       A S   R     
+             A C M I C A                     P L U   A     
+         A B R E P R Z M               A B   C U B   M     
+CTL RECV:1 1 0 1 1 0 1 0     CTL SEND: 0 0 0 0 0 0 0 1
+Computer 1 before:
+  A: 00000000 (0)  B: 00000000 (0)
+ALU: 00000000 (0)
+BUS: 00000000 (0)
+
+MAR: 00000111
+RAM: 00000000 (0)
+
+PC:  00000000 (0)
+IR:    000000 (RESET) 0000
+
+
+             M   J   M R                       A S   R     
+             A C M I C A                     P L U   A     
+         A B R E P R Z M               A B   C U B   M     
+CTL RECV:0 0 1 0 0 0 0 0     CTL SEND: 0 0 0 1 0 0 0 0
+Computer 1 after:
+  A: 00000000 (0)  B: 00000000 (0)
+ALU: 00000000 (0)
+BUS: 00000000 (0)
+
+MAR: 00000000
+RAM: 00000100 (4)
+
+PC:  00000000 (0)
+IR:    000000 (RESET) 0000
+
+
+             M   J   M R                       A S   R     
+             A C M I C A                     P L U   A     
+         A B R E P R Z M               A B   C U B   M     
+CTL RECV:0 0 1 0 0 0 0 0     CTL SEND: 0 0 0 1 0 0 0 0
+Computer 1 before:
+  A: 00000000 (0)  B: 00000000 (0)
+ALU: 00000000 (0)
+BUS: 00000100 (4)
+
+MAR: 00000000
+RAM: 00000100 (4)
+
+PC:  00000000 (0)
+IR:    000000 (RESET) 0001
+
+
+             M   J   M R                       A S   R     
+             A C M I C A                     P L U   A     
+         A B R E P R Z M               A B   C U B   M     
+CTL RECV:0 0 0 1 0 1 0 0     CTL SEND: 0 0 0 0 0 0 0 1
+Computer 1 after:
+  A: 00000000 (0)  B: 00000000 (0)
+ALU: 00000000 (0)
+BUS: 00000100 (4)
+
+MAR: 00000000
+RAM: 00000100 (4)
+
+PC:  00000001 (1)
+IR:    000100 (LDA) 0001
+
+
+             M   J   M R                       A S   R     
+             A C M I C A                     P L U   A     
+         A B R E P R Z M               A B   C U B   M     
+CTL RECV:0 0 0 1 0 1 0 0     CTL SEND: 0 0 0 0 0 0 0 1
+Computer 1 before:
+  A: 00000000 (0)  B: 00000000 (0)
+ALU: 00000000 (0)
+BUS: 00000001 (1)
+
+MAR: 00000000
+RAM: 00000100 (4)
+
+PC:  00000001 (1)
+IR:    000100 (LDA) 0010
+
+
+             M   J   M R                       A S   R     
+             A C M I C A                     P L U   A     
+         A B R E P R Z M               A B   C U B   M     
+CTL RECV:0 0 1 0 0 0 0 0     CTL SEND: 0 0 0 1 0 0 0 0
+Computer 1 after:
+  A: 00000000 (0)  B: 00000000 (0)
+ALU: 00000000 (0)
+BUS: 00000001 (1)
+
+MAR: 00000001
+RAM: 11001001 (201)
+
+PC:  00000001 (1)
+IR:    000100 (LDA) 0010
+
+

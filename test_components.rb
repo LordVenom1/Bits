@@ -33,6 +33,7 @@ class TestSimple < Test::Unit::TestCase
 	def test_or		
 		s = Simulation.new
 		c = OrGate.new(s,"comp",nil)		
+
 		help_test_logic_table(s,c,
 		{
 			#[0,0] => [0],
@@ -46,6 +47,7 @@ class TestSimple < Test::Unit::TestCase
 	def test_and
 		s = Simulation.new	
 		c = AndGate.new(s,"comp",nil)
+
 		help_test_logic_table(s,c,
 			{
 				[0,0] => [0],
@@ -59,6 +61,7 @@ class TestSimple < Test::Unit::TestCase
 	def test_xor		
 		s = Simulation.new	
 		c = XorGate.new(s,"comp",nil)
+
 		help_test_logic_table(s,c,
 			{
 				[0,0] => [0],
@@ -72,6 +75,7 @@ class TestSimple < Test::Unit::TestCase
 	def test_nand	
 		s = Simulation.new	
 		c = NandGate.new(s,"comp",nil)
+
 		help_test_logic_table(s,c,
 			{
 				[0,0] => [1],
@@ -85,6 +89,7 @@ class TestSimple < Test::Unit::TestCase
 	def test_not
 		s = Simulation.new	
 		c = NotGate.new(s,"comp",nil)
+
 		help_test_logic_table(s,c,
 			{
 				[1] => [0],
@@ -128,7 +133,7 @@ class TestSimple < Test::Unit::TestCase
 	def test_register8
 		s = Simulation.new
 		c = Register8.new(s,"comp",nil)
-				
+		
 		c.set_input_values([1,1,1,1,1,1,1,1,0])
 		s.update		
 		assert_equal([0,0,0,0,0,0,0,0], c.get_outputs().collect do |val| val ? 1 : 0 end, "input doens't matter until input is set")
@@ -154,6 +159,70 @@ class TestSimple < Test::Unit::TestCase
 		s.update
 		assert_equal(true, c.get_output(0))		
 	end
+	
+	def test_datareg_chain
+	
+		# this might not happen in a computer but conceptually chaining 
+		# two latches together should require two update()s to shift 
+		# changes through
+	
+		s = Simulation.new
+		c = DataLatch.new(s,"dl",nil)		
+		c2 = DataLatch.new(s,"dl2",nil)		
+		# DL > DL > Not ^
+		
+		n = NotGate.new(s,"not",nil)		
+		
+		c2.inputs[0].set_source(c.outputs[0])		
+		n.inputs[0].set_source(c2.outputs[0])
+		c.inputs[0].set_source(n.outputs[0])
+				
+		s.update
+		assert_equal(true, c.get_output(0))
+		assert_equal(false, c2.get_output(0))
+		s.update
+		assert_equal(true, c.get_output(0))
+		assert_equal(true, c2.get_output(0))
+		s.update
+		assert_equal(false, c.get_output(0))
+		assert_equal(true, c2.get_output(0))
+		s.update
+		assert_equal(false, c.get_output(0))		
+		assert_equal(false, c2.get_output(0))		
+	end	
+	
+	def test_datareg_chain_inverse
+	
+		# with the first datalatch updating on clock-low, both latches will populated 
+		# in a single update
+	
+		s = Simulation.new
+		c = DataLatch.new(s,"dl",nil,true)		
+		c2 = DataLatch.new(s,"dl2",nil)		
+		# DL > DL > Not ^
+		
+		n = NotGate.new(s,"not",nil)
+		
+		c2.inputs[0].set_source(c.outputs[0])		
+		n.inputs[0].set_source(c2.outputs[0])
+		c.inputs[0].set_source(n.outputs[0])
+		
+		s.update(false,false)
+		s.update
+		assert_equal(true, c.get_output(0))
+		assert_equal(true, c2.get_output(0))
+		s.update
+		assert_equal(false, c.get_output(0))
+		assert_equal(false, c2.get_output(0))
+		s.update
+		assert_equal(true, c.get_output(0))
+		assert_equal(true, c2.get_output(0))
+		s.update
+		assert_equal(false, c.get_output(0))		
+		assert_equal(false, c2.get_output(0))		
+	end
+	
+	
 	
 	def test_buffer
 		s = Simulation.new
@@ -625,9 +694,7 @@ class TestSimple < Test::Unit::TestCase
 	
 	def test_programcounter
 		s = Simulation.new()
-		c = ProgramCounter.new(s,"comp",nil)
-		
-		
+		c = ProgramCounter.new(s,"comp",nil)		
 				
 		#                                   inc,jmp
 		help_test_case(s,c,[0,0,0,0,0,0,0,0,  0,0],[0,0,0,0,0,0,0,0])
@@ -643,9 +710,27 @@ class TestSimple < Test::Unit::TestCase
 		help_test_case(s,c,[0,0,0,0,0,0,0,0,  1,0],[0,0,0,0,0,0,1,1])	
 	end
 	
-	def test_loopcounter
+	def test_programcounterjump
 		s = Simulation.new()
-		c = LoopCounter.new(s, "comp", nil, 4)
+		c = ProgramCounter.new(s,"comp",nil)		
+				
+		#                                   inc,jmp
+		help_test_case(s,c,[0,0,0,0,0,0,0,0, 0,0],[0,0,0,0,0,0,0,0])
+		#                                   inc,jmp		
+		help_test_case(s,c,[0,0,0,0,0,0,0,0, 1,0],[0,0,0,0,0,0,0,1])	
+		#                                   inc,jmp
+		help_test_case(s,c,[0,0,0,0,0,0,0,0, 1,0],[0,0,0,0,0,0,1,0])	
+		#                                   inc,jmp
+		help_test_case(s,c,[0,0,0,0,0,0,0,0, 1,1],[0,0,0,0,0,0,0,0])			
+		#                                   inc,jmp
+		help_test_case(s,c,[0,0,0,0,0,0,0,0, 1,0],[0,0,0,0,0,0,0,1])	
+		#                                   inc,jmp
+		help_test_case(s,c,[0,0,0,0,0,0,0,0, 1,1],[0,0,0,0,0,0,0,0])
+	end
+	
+	def test_microcounter
+		s = Simulation.new()
+		c = MicroCounter.new(s, "comp", nil, 4)
 		
 		#                           J E Z
 		help_test_case(s,c,[0,0,0,0,0,0,0],[0,0,0,0])
@@ -658,9 +743,9 @@ class TestSimple < Test::Unit::TestCase
 		help_test_case(s,c,[0,0,0,0,0,1,0],[0,1,1,1])			
 	end
 	
-	def test_loopcounterjump
+	def test_microcounterjump
 		s = Simulation.new()
-		c = LoopCounter.new(s, "comp", nil, 4)
+		c = MicroCounter.new(s, "comp", nil, 4)
 		
 		#                           J E Z
 		help_test_case(s,c,[0,0,0,0,0,0,0],[0,0,0,0])
@@ -671,9 +756,9 @@ class TestSimple < Test::Unit::TestCase
 		help_test_case(s,c,[0,0,0,0,0,1,0],[0,0,1,0])
 	end
 	
-	def test_loopcounterzero
+	def test_microcounterzero
 		s = Simulation.new()
-		c = LoopCounter.new(s, "comp", nil, 4)
+		c = MicroCounter.new(s, "comp", nil, 4)
 		
 		#                           J E Z
 		help_test_case(s,c,[0,1,0,0,0,0,0],[0,0,0,0])
@@ -750,8 +835,7 @@ class TestSimple < Test::Unit::TestCase
 		
 	end
 	
-	def test_computer
-
+	def test_computer		
 	end
 	
 	def teardown

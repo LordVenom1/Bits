@@ -1,10 +1,15 @@
 require './components.rb'
 
-class Computer1
+class ComputerSAP
 	attr_reader :label
 	
 	def path
 		@label
+	end
+	
+	def reg_format(reg, decode = false)
+		bin = (reg.outputs.collect do |x| x.get_value() ? '1' : '0'  end).join("")
+		decode ? "#{bin} (#{bin.to_i(2).to_s()})" : bin
 	end
 	
 	def initialize()
@@ -112,11 +117,6 @@ class Computer1
 	
 	end
 	
-	def reg_format(reg, decode = false)
-		bin = (reg.outputs.collect do |x| x.get_value() ? '1' : '0'  end).join("")
-		decode ? "#{bin} (#{bin.to_i(2).to_s()})" : bin
-	end	
-	
 	def format_ir(ir, cnt)
 	+ reg_format(@ir)  +  " (" + case reg_format(@ir)
 			when "000000"
@@ -162,30 +162,23 @@ class Computer1
 	
 	def run(progname)
 		
-		# system("ruby write_microcode_1024.rb")
-		# system("ruby compile.rb #{progname}")
+		system("ruby write_microcode_1024.rb")
+		system("ruby compile.rb #{progname}")
 		
 		@ram.load_file("#{progname}.rom")
 				
-	
-		# result = RubyProf.profile do 		
-			# @sim.update
-		# end		
-		# puts RubyProf::FlatPrinter.new(result)
-		
-		# exit
-							
 		@sim.update(false, false)
 		display("start")	
-		# s = STDIN.gets()
+		s = STDIN.gets()
 		
-		while true do 			
+		while true do 
+		
+			# show microcode step "before"
 			@sim.update(true, false)
 			display("before")						
 			@sim.update(false, true)
 			display("after")
-			# s = STDIN.gets()
-			
+			s = STDIN.gets()
 		end
 
 	
@@ -236,5 +229,5 @@ if (ARGV.size != 1)
 	puts "Usage: comp <program>"
 	exit 
 end 
-comp = Computer1.new()
+comp = ComputerSAP.new()
 comp.run(ARGV[0])
