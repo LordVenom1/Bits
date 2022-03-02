@@ -1,4 +1,4 @@
-require './components.rb'
+require_relative 'components.rb'
 
 class Computer1
 	attr_reader :label
@@ -30,15 +30,7 @@ class Computer1
 			@alu.inputs[idx + 8].set_source(@b.outputs[idx])
 		end
 		
-		
-		@ir = RegisterN.new(@sim,"IR",self,6) # 6 inst, 8 # instruction 9/8
-		# (6...14).each do |idx|
-			# @ir.inputs[idx].set_source(f)
-		# end
-		#              INST        DATA
-		# @ir.override("000100" + "00000000")  # move A, B
-		# @ir.inputs.each do |i| i.set_source(f) end
-		
+		@ir = RegisterN.new(@sim,"IR",self,6) # 6 inst, 8 # instruction 9/8		
 		@microcode = Microcode.new(@sim, "microcode", self, "computer1a.rom", "computer1b.rom") # 6 inst, 4 cntr > 16 outputs
 		(0...6).each do |idx| 
 			@microcode.inputs[idx].set_source(@ir.outputs[idx]) 
@@ -89,27 +81,11 @@ class Computer1
 		end
 		@ram.inputs[16].set_source(@microcode.outputs[7])
 			
-		# (0..8).each do |idx| @ram.inputs[idx + 8].set_source(@mar.outputs[idx]) end # addr + enable
 		@pc.inputs[8].set_source(@microcode.outputs[3]) # pc enable
 		@pc.inputs[9].set_source(@microcode.outputs[4]) # jump
-		
-		
-		# @a.inputs[8].set_source(f)
-		# @b.inputs[8].set_source(f)
-		# (0...8).each do |idx| @alu.inputs[idx + 8].set_source(@b.outputs[idx]) end
-		# @alu.inputs[16].set_source(f) # subtraction
 		@ir.inputs[6].set_source(@microcode.outputs[5]) # ir read from bus flag
 		@mar.inputs[8].set_source(@microcode.outputs[2]) # mar read from bus flag
 
-		# @control_out.inputs[0].set_source(f) # ram
-		# @control_out.inputs[1].set_source(f) # a
-		# @control_out.inputs[2].set_source(f) # b
-		# @control_out.inputs[3].set_source(f) # alu
-		# @control_out.inputs[4].set_source(t) # pc
-		# @control_out.inputs[5].set_source(f)
-		# @control_out.inputs[6].set_source(f)
-		# @control_out.inputs[7].set_source(f)
-	
 	end
 	
 	def reg_format(reg, decode = false)
@@ -136,11 +112,7 @@ class Computer1
 	
 	def display(desc)		
 	
-		# HERE WE GO
-		
 		puts "Computer 1 #{desc}:"
-		
-		# puts flags
 		
 		puts "  A: " + reg_format(@a,true) + "  B: " + reg_format(@b,true)
 		puts "ALU: " + reg_format(@alu, true)
@@ -166,69 +138,21 @@ class Computer1
 		# system("ruby compile.rb #{progname}")
 		
 		@ram.load_file("#{progname}.rom")
-				
-	
-		# result = RubyProf.profile do 		
-			# @sim.update
-		# end		
-		# puts RubyProf::FlatPrinter.new(result)
-		
-		# exit
 							
 		@sim.update(false, false)
-		display("start")	
-		# s = STDIN.gets()
+		display("start")		
 		
 		while true do 			
 			@sim.update(true, false)
 			display("before")						
 			@sim.update(false, true)
 			display("after")
-			# s = STDIN.gets()
+			
+			puts "-----------------------------------------------------------------"
+			puts ""
+			puts "-----------------------------------------------------------------"			
 			
 		end
-
-	
-	# data movement
-		# movement
-		# push
-		# pop
-		# lea - load pointer into register
-		
-	# arithmetic/logic
-		# add
-		# sub
-		# inc, dec
-		# imul, idiv
-		# and,or,xor
-		# not
-		# neg
-		# shl, shr - bit shift
-		# 
-	# control-flow
-		# jmp
-		# je, jne, jz, jg, jge, jl, jle
-		# cmp - same as subtract except result is discarded.  sets falgs.  
-		# call, ret - subroutines!
-		
-	
-	# ip - instruction pointer - same as pc?
-	# cf carry flag
-	# df direction flag
-	# if interrupt flag
-	# esp stack pointer.  same as sp?
-	# ebp base pointer
-	# esi, edi?
-	
-	
-		# how we do'in this?  4 inst, 4 op codes?  or 2-byte instructions?
-		# @ir.override("00000000")
-	
-		# 2.times() do 
-			# @sim.update
-			# display()
-			# s = gets 
-		# end
 	end
 end
 
