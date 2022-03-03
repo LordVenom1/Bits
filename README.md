@@ -11,8 +11,8 @@ To explore:
 * To add a new instruction, modify "util/write_microcode_1024.rb" as needed, run it, and copy the new computer1a.rom and computer1b.rom down to the main folder.
 
 References:
-[beneater.net](https://eater.net/8bit)
-Digital Computer Electronics 3rd Edition - Malvino and Brown
+* [beneater.net](https://eater.net/8bit)
+* Digital Computer Electronics 3rd Edition - Malvino and Brown
 
 Background:
 Ever since taking an electrical engineering course in college, the experience of understanding and building a breadboard computer 
