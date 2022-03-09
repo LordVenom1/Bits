@@ -1,5 +1,5 @@
 require "test/unit"
-require './components.rb'
+require_relative 'simulation.rb'
 
 # expose input and outputs for direct access
 # class Component
@@ -11,833 +11,808 @@ DEBUG = false
 
 class TestSimple < Test::Unit::TestCase
 
-	def help_test_case(sim, component, i, o)
-			puts "start scenario - input: " + i.join(",") if DEBUG
-			component.set_input_values(i)
-			sim.check() if DEBUG
-			# puts component.to_s
-			sim.update	
-			puts component.dump	if DEBUG and component.class.to_s.start_with?("ram")		
-			puts component.to_s if DEBUG
-			assert_equal(o, component.get_outputs().collect do |val| val ? 1 : 0 end, "input: " + i.join(","))
+	def setup
+		@sim = Simulation.new
 	end
-
-	def help_test_logic_table(sim, component, cases)
-		
-		cases.each do |i,o|
-			help_test_case(sim,component,i,o)
+	
+	def teardown
+	end
+	
+	def help_test_component_case(comp, inputs, expected_output)		
+		help_test_component_set_inputs(comp, inputs)
+		@sim.update # pulse the clock in case we need it
+		assert_equal(expected_output, comp.output ? "T" : "F")
+	end
+	
+	def help_test_component_set_inputs(comp, inputs)
+		inputs.split("").each_with_index do |i,n|			
+			gate = Simulation::FALSE if ["0","F"].include? i
+			gate = Simulation::TRUE if ["1","T"].include? i
+			raise "invalid input #{inputs}" unless gate
+			comp.set_input(n, gate)
 		end
-	
 	end
 	
-	def test_or		
-		s = Simulation.new
-		c = OrGate.new(s,"comp",nil)		
+	def help_test_component_cases(comp, cases)
+		cases.each do |i,o|
+			help_test_component_case(comp, i, o)
+		end
+	end
+	
+	def help_test_component_group_set_inputs(cg, inputs)
+		inputs.split("").each_with_index do |i,n|			
+			gate = Simulation::FALSE if ["0","F"].include? i
+			gate = Simulation::TRUE if ["1","T"].include? i
+			raise "invalid input #{inputs}" unless gate
+			cg.set_aliased_input(n, gate)
+		end	
+	end
 
-		help_test_logic_table(s,c,
-		{
-			#[0,0] => [0],
-			[1,0] => [1],
-			[0,1] => [1],
-			[1,1] => [1]
-		})
+	def help_test_component_group_case(cg, inputs, expected_outputs)			
 		
+		# convert a string of T/F to actual gates and link them to the component inputs inside the component group
+		help_test_component_group_set_inputs(cg,inputs)
+
+		@sim.update		
+		
+		# calculate all the outputs of the component group		
+		calculated_outputs = (0...expected_outputs.size).collect do |n|
+			cg.aliased_output(n).output
+		end
+		
+		# puts "#{inputs} => #{expected_outputs}  =? " + (calculated_outputs.collect do |o| o ? 'T' : 'F' end.join(""))
+		assert_equal(expected_outputs.split("").collect do |o| ["1","T"].include? o end, calculated_outputs, inputs)
 	end
 	
-	def test_and
-		s = Simulation.new	
-		c = AndGate.new(s,"comp",nil)
-
-		help_test_logic_table(s,c,
-			{
-				[0,0] => [0],
-				[1,0] => [0],
-				[0,1] => [0],
-				[1,1] => [1]
-			}
-		)
+	def help_test_component_group_cases(cg, cases)
+		cases.each do |i,o|
+			help_test_component_group_case(cg, i, o)
+		end
+	end
+	
+	#################################################################################
+	#########  Test single gates
+	#################################################################################
+	
+	def test_buffer
+		comp = @sim.register_component(BufferGate.new())
+		help_test_component_cases(comp,
+		{
+			"F" => "F",
+			"T" => "T"							
+		})		
+	end
+	
+	def test_not		
+		comp = @sim.register_component(NotGate.new())
+		help_test_component_cases(comp,
+		{
+			"F" => "T",
+			"T" => "F"							
+		})		
+	end
+	
+	def test_nand		
+		comp = @sim.register_component(NandGate.new())
+		help_test_component_cases(comp,
+		{
+			"FF" => "T",
+			"TF" => "T",
+			"FT" => "T",
+			"TT" => "F"
+		})
 	end
 	
 	def test_xor		
-		s = Simulation.new	
-		c = XorGate.new(s,"comp",nil)
-
-		help_test_logic_table(s,c,
-			{
-				[0,0] => [0],
-				[1,0] => [1],
-				[0,1] => [1],
-				[1,1] => [0]
-			}
-		)
+		comp = @sim.register_component(XorGate.new())
+		help_test_component_cases(comp,
+		{
+			"FF" => "F",
+			"FT" => "T",
+			"TF" => "T",
+			"TT" => "F"
+		})
 	end
 	
-	def test_nand	
-		s = Simulation.new	
-		c = NandGate.new(s,"comp",nil)
-
-		help_test_logic_table(s,c,
-			{
-				[0,0] => [1],
-				[1,0] => [1],
-				[0,1] => [1],
-				[1,1] => [0]
-			}
-		)
+	def test_datalatch
+		comp = @sim.register_clocked_component(DataLatch.new(),:high)
+		
+		help_test_component_case(comp, "F", "F")
+		help_test_component_case(comp, "F", "F")
+		help_test_component_case(comp, "T", "T")
+		help_test_component_case(comp, "T", "T")
 	end
 	
-	def test_not
-		s = Simulation.new	
-		c = NotGate.new(s,"comp",nil)
-
-		help_test_logic_table(s,c,
-			{
-				[1] => [0],
-				[0] => [1]
-							
-			}
-		)		
-	end
-	
-	def test_register
-		s = Simulation.new
-		c = Register.new(s,"comp",nil)
-		
-		c.set_input_values([1,0])
-		s.update
-		# puts c.to_s
-		assert_equal(false, c.get_output(0), "input doesn't do anything until load is set")
-		
-		c.set_input_values([1,1])
-		s.update
-		# puts c.to_s
-		assert_equal(true, c.get_output(0), "load reg, out should reflect it")
-		
-		c.set_input_values([0,0])
-		s.update		
-		assert_equal(true, c.get_output(0), "output sticks even when input changes")
-	end
-	
-	def test_registern
-		s = Simulation.new
-		c = RegisterN.new(s,"comp",nil,2)
-		
-		help_test_logic_table(s,c,
-			{
-				[0,1,0] => [0,0],
-				[0,1,1] => [0,1]			
-			}
-		)
-	end	
-	
-	def test_register8
-		s = Simulation.new
-		c = Register8.new(s,"comp",nil)
-		
-		c.set_input_values([1,1,1,1,1,1,1,1,0])
-		s.update		
-		assert_equal([0,0,0,0,0,0,0,0], c.get_outputs().collect do |val| val ? 1 : 0 end, "input doens't matter until input is set")
-		
-		c.set_input_values([1,1,1,1,1,1,1,1,1])
-		s.update
-		assert_equal([1,1,1,1,1,1,1,1], c.get_outputs().collect do |val| val ? 1 : 0 end, "now output is showing input")
-				
-		c.set_input_values([0,1,1,1,0,0,0,1,0])
-		s.update	
-		assert_equal([1,1,1,1,1,1,1,1], c.get_outputs().collect do |val| val ? 1 : 0 end, "output is still showing old output in spite of input changing")
-
-		c.set_input_values([1,1,1,1,0,0,0,1,1])
-		s.update	
-		assert_equal([1,1,1,1,0,0,0,1], c.get_outputs().collect do |val| val ? 1 : 0 end, "output is still showing old output in spite of input changing")
-				
-	end
-	
-	def test_datareg
-		s = Simulation.new
-		c = DataLatch.new(s,"comp",nil)
-		c.inputs[0].set_source(s.true_signal.outputs[0])		
-		s.update
-		assert_equal(true, c.get_output(0))		
-	end
-	
-	def test_datareg_chain
+	def test_datalatch_chain
 	
 		# this might not happen in a computer but conceptually chaining 
 		# two latches together should require two update()s to shift 
 		# changes through
-	
-		s = Simulation.new
-		c = DataLatch.new(s,"dl",nil)		
-		c2 = DataLatch.new(s,"dl2",nil)		
+		
+		dl1 = @sim.register_clocked_component(DataLatch.new, :high)
+		dl2 = @sim.register_clocked_component(DataLatch.new, :high)		
+		n = @sim.register_component(NotGate.new)
+		
 		# DL > DL > Not ^
 		
-		n = NotGate.new(s,"not",nil)		
+		dl1.set_input(0,n)
+		dl2.set_input(0,dl1)
+		n.set_input(0,dl2)
 		
-		c2.inputs[0].set_source(c.outputs[0])		
-		n.inputs[0].set_source(c2.outputs[0])
-		c.inputs[0].set_source(n.outputs[0])
-				
-		s.update
-		assert_equal(true, c.get_output(0))
-		assert_equal(false, c2.get_output(0))
-		s.update
-		assert_equal(true, c.get_output(0))
-		assert_equal(true, c2.get_output(0))
-		s.update
-		assert_equal(false, c.get_output(0))
-		assert_equal(true, c2.get_output(0))
-		s.update
-		assert_equal(false, c.get_output(0))		
-		assert_equal(false, c2.get_output(0))		
-	end	
-	
-	def test_datareg_chain_inverse
-	
-		# with the first datalatch updating on clock-low, both latches will populated 
-		# in a single update
-	
-		s = Simulation.new
-		c = DataLatch.new(s,"dl",nil,true)		
-		c2 = DataLatch.new(s,"dl2",nil)		
-		# DL > DL > Not ^
-		
-		n = NotGate.new(s,"not",nil)
-		
-		c2.inputs[0].set_source(c.outputs[0])		
-		n.inputs[0].set_source(c2.outputs[0])
-		c.inputs[0].set_source(n.outputs[0])
-		
-		s.update(false,false)
-		s.update
-		assert_equal(true, c.get_output(0))
-		assert_equal(true, c2.get_output(0))
-		s.update
-		assert_equal(false, c.get_output(0))
-		assert_equal(false, c2.get_output(0))
-		s.update
-		assert_equal(true, c.get_output(0))
-		assert_equal(true, c2.get_output(0))
-		s.update
-		assert_equal(false, c.get_output(0))		
-		assert_equal(false, c2.get_output(0))		
+		assert_equal(false, dl1.output)
+		assert_equal(false, dl2.output)
+		@sim.update
+		assert_equal(true, dl1.output)
+		assert_equal(false, dl2.output)
+		@sim.update
+		assert_equal(true, dl1.output)
+		assert_equal(true, dl2.output)
+		@sim.update
+		assert_equal(false, dl1.output)
+		assert_equal(true, dl2.output)
+		@sim.update
+		assert_equal(false, dl1.output)
+		assert_equal(false, dl2.output)
 	end
 	
+	def test_datareg_chain_inverse	
 	
-	
-	def test_buffer
-		s = Simulation.new
-		c = BufferGate.new(s,"comp",nil)
-		help_test_logic_table(s,c,
-			{
-				[1] => [1],
-				[0] => [0]			
-			}
-		)
-	end
-	
-	def test_datareg_not
-		s = Simulation.new
-		c = DataLatch.new(s,"dl",nil)		
+		# # with the first datalatch updating on clock-low, both latches will populated 
+		# # in a single update
 		
-		n = NotGate.new(s,"not",nil)
-		n.inputs[0].set_source(c.outputs[0])
-		c.inputs[0].set_source(n.outputs[0])
+		dl1 = @sim.register_clocked_component(DataLatch.new, :low)
+		dl2 = @sim.register_clocked_component(DataLatch.new, :high)		
+		n = @sim.register_component(NotGate.new)		
 		
-		s.update
-		assert_equal(true, c.get_output(0))
-		s.update
-		assert_equal(false, c.get_output(0))
-		s.update
-		assert_equal(true, c.get_output(0))
-		s.update
-		assert_equal(false, c.get_output(0))		
-				
-	end
-	
-	def test_halfadder
-		s = Simulation.new
-		c = HalfAdder.new(s,"comp",nil)
+		# DL(:low) > DL(:high) > Not ^
 		
-		help_test_logic_table(s,c,
-		{
-			[0,0] => [0,0],
-			[0,1] => [1,0],
-			[1,0] => [1,0],
-			[1,1] => [0,1]
-		})
-	end
+		dl1.set_input(0,n)
+		dl2.set_input(0,dl1)
+		n.set_input(0,dl2)
 	
-	def test_fulladder
-		s = Simulation.new
-		c = FullAdder.new(s,"comp",nil)
+		assert_equal(false, dl1.output)
+		assert_equal(false, dl2.output)
+		@sim.update
+		assert_equal(true, dl1.output)
+		assert_equal(true, dl2.output)
+		@sim.update
+		assert_equal(false, dl1.output)
+		assert_equal(false, dl2.output)
+		@sim.update
+		assert_equal(true, dl1.output)
+		assert_equal(true, dl2.output)
+		@sim.update
+		assert_equal(false, dl1.output)
+		assert_equal(false, dl2.output)	
+	end
 		
-		help_test_logic_table(s,c,
-		{
-			[0,0,0] => [0,0],
-			[0,0,1] => [1,0],
-			[0,1,0] => [1,0],
-			[0,1,1] => [0,1],
-			[1,0,0] => [1,0],
-			[1,0,1] => [0,1],
-			[1,1,0] => [0,1],
-			[1,1,1] => [1,1]			
-		})
-	end
+	#################################################################################
+	#########  Test component groups
+	#################################################################################
 	
-	def test_fulladder8
-		s = Simulation.new()
-		c = FullAdder8.new(s,"comp",nil)
-		
-		help_test_logic_table(s,c,
-		{
-			#                                  CI
-			[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  0] => [0,0,0,0,0,0,0,0,  0],
-			[0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,  0] => [0,0,0,0,0,0,0,1,  0],
-			[0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1,  0] => [0,0,0,0,0,0,1,0,  0],
-			[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  0] => [1,0,0,0,0,0,0,0,  0],
-			[1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,  0] => [0,0,0,0,0,0,0,0,  1],
-			[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,  0] => [1,1,1,1,1,1,1,0,  1],
-			[0,0,0,0,1,1,0,0,0,0,0,0,1,0,0,1,  0] => [0,0,0,1,0,1,0,1,  0],			
-			[1,1,0,0,0,1,0,1,1,0,0,1,1,1,1,0,  0] => [0,1,1,0,0,0,1,1,  1],
-			[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  1] => [0,0,0,0,0,0,0,1,  0],
-			[1,1,0,0,0,1,0,1,1,0,0,1,1,1,1,0,  1] => [0,1,1,0,0,1,0,0,  1]			
-		})
-	end
-	
-	def test_fulladdersub8
-		s = Simulation.new
-		c = FullAdderSub8.new(s,"comp",nil)
+	def test_or4
+		comp = ComponentGroup.build_or4_gate(@sim)
 
-		c.set_input_value(0,true)		
-		c.set_input_value(10,true)
-		c.set_input_value(14,true)		
-		c.set_input_value(15,true)
-		c.set_input_value(16,true)
-		
-		
-		
-		help_test_logic_table(s,c,
+		help_test_component_group_cases(comp,
 		{
-			#                                  CI
-			[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  0] => [0,0,0,0,0,0,0,0,  0],
-			[0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,  0] => [0,0,0,0,0,0,0,1,  0],
-			[0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1,  0] => [0,0,0,0,0,0,1,0,  0],
-			[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  0] => [1,0,0,0,0,0,0,0,  0],
-			[1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,  0] => [0,0,0,0,0,0,0,0,  1],
-			[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,  0] => [1,1,1,1,1,1,1,0,  1],
-			[0,0,0,0,1,1,0,0,0,0,0,0,1,0,0,1,  0] => [0,0,0,1,0,1,0,1,  0],			
-			[1,1,0,0,0,1,0,1,1,0,0,1,1,1,1,0,  0] => [0,1,1,0,0,0,1,1,  1]			
-		})
-			
-		help_test_logic_table(s,c,
-		{                   #
-			[0,0,0,1,1,0,0,0,0,0,0,0,1,0,0,0,1] => [0,0,0,1,0,0,0,0,1], # not sure what carry means yet
-			[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1] => [0,0,0,0,0,0,0,0,1],			
-			[1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1] => [0,0,0,0,0,0,0,0,1],			
-			[1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1] => [0,1,0,0,0,0,0,0,1],	
-			[0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,1,1] => [0,0,0,0,0,1,1,0,1],
-			[0,0,0,0,0,0,0,1,0,0,0,0,0,1,1,1,1] => [1,1,1,1,1,0,1,0,0],	
+			"0000" => "0",
+			"0001" => "1",
+			"0010" => "1",
+			"0011" => "1",
+			"0100" => "1",
+			"0101" => "1",
+			"0110" => "1",
+			"0111" => "1",
+			"1000" => "1",
+			"1001" => "1",
+			"1010" => "1",
+			"1011" => "1",
+			"1100" => "1",
+			"1101" => "1",
+			"1110" => "1",
+			"1111" => "1"
 		})
 	end	
 	
 	def test_and4
-		s = Simulation.new	
-		c = And4Gate.new(s,"comp",nil)
+		comp = ComponentGroup.build_and4_gate(@sim)
+
+		help_test_component_group_cases(comp,
+		{
+			"0000" => "0",
+			"0001" => "0",
+			"0010" => "0",
+			"0011" => "0",
+			"0100" => "0",
+			"0101" => "0",
+			"0110" => "0",
+			"0111" => "0",
+			"1000" => "0",
+			"1001" => "0",
+			"1010" => "0",
+			"1011" => "0",
+			"1100" => "0",
+			"1101" => "0",
+			"1110" => "0",
+			"1111" => "1"
+		})
+	end	
+	
+	def test_bufferset
+		comp = ComponentGroup.build_bufferset(@sim, 3)
 		
-		help_test_logic_table(s,c,
+		help_test_component_group_cases(comp,
+		{
+			"110" => "110",
+			"000" => "000",
+			"111" => "111",
+			"100" => "100"
+		})
+	end
+	
+	def test_encoder8x3 # MSB
+		comp = ComponentGroup.build_encoder8x3(@sim)
+		
+		help_test_component_group_cases(comp,
 			{
-				[0,0,0,0] => [0],
-				[1,0,0,0] => [0],
-				[0,1,0,0] => [0],
-				[1,1,0,0] => [0],
-				[0,0,0,1] => [0],
-				[1,0,0,1] => [0],
-				[0,1,0,1] => [0],
-				[1,1,0,1] => [0],
-				[0,0,1,0] => [0],
-				[1,0,1,0] => [0],
-				[0,1,1,0] => [0],
-				[1,1,1,0] => [0],
-				[0,0,1,1] => [0],
-				[1,0,1,1] => [0],
-				[0,1,1,1] => [0],
-				[1,1,1,1] => [1],				
+			"00000000" => "000",  # unspecified
+			"10000000" => "000",
+			"01000000" => "001",
+			"00100000" => "010",
+			"00010000" => "011",		
+			"00001000" => "100",
+			"00000100" => "101",
+			"00000010" => "110",
+			"00000001" => "111" 			
+			}
+		)
+	end
+	
+	def test_halfadder
+		# s = Simulation.new
+		# c = HalfAdder.new(s,"comp",nil)
+		comp = ComponentGroup.build_halfadder(@sim)
+		
+		help_test_component_group_cases(comp,
+			{
+				"00" => "00",
+				"01" => "10",
+				"10" => "10",
+				"11" => "01"
+			}
+		)
+
+	end
+	
+	def test_fulladder		
+		comp = ComponentGroup.build_fulladder(@sim)		
+		help_test_component_group_cases(comp,
+			{
+				"000" => "00",
+				"001" => "10",
+				"010" => "10",
+				"011" => "01",
+				"100" => "10",
+				"101" => "01",
+				"110" => "01",
+				"111" => "11"				
+			}
+		)
+	end
+	
+	def test_fulladder8
+		comp = ComponentGroup.build_fulladder8(@sim)		
+		help_test_component_group_cases(comp,
+			{			
+			"00000000000000000" => "000000000",
+			"00000001000000000" => "000000010",
+			"00000001000000010" => "000000100",
+			"10000000000000000" => "100000000",
+			"10000000100000000" => "000000001",
+			"11111111111111110" => "111111101",
+			"00001100000010010" => "000101010",		
+			"11000101100111100" => "011000111",
+			"00000000000000001" => "000000010",
+			"11000101100111101" => "011001001"			
+			}
+		)
+	end
+	
+	def test_fulladdersub8
+		comp = ComponentGroup.build_fulladdersub8(@sim)		
+		help_test_component_group_cases(comp,
+			{			
+			"00000000000000000" => "000000000",
+			"00000001000000000" => "000000010",
+			"00000001000000010" => "000000100",
+			"10000000000000000" => "100000000",
+			"10000000100000000" => "000000001",
+			"11111111111111110" => "111111101",
+			"00001100000010010" => "000101010",			
+			"11000101100111100" => "011000111",			
+			"00011000000010001" => "000100001",
+			"00000000000000001" => "000000001",			
+			"10000000100000001" => "000000001",			
+			"10000000010000001" => "010000001",	
+			"00000111000000011" => "000001101",
+			"00000001000001111" => "111110100"		
 			}
 		)
 	end
 	
 	def test_mux2
-		s = Simulation.new
-		c = Multiplexer2.new(s,"comp",nil)
-		
-		help_test_logic_table(s,c,
+		comp = ComponentGroup.build_mux2(@sim)		
+		help_test_component_group_cases(comp,
 			{
-				[0,0,0] => [0],
-				[1,0,0] => [0],
-				[0,1,0] => [1],
-				[1,1,0] => [1],
-				[0,0,1] => [0],
-				[1,0,1] => [1],
-				[0,1,1] => [0],
-				[1,1,1] => [1],
+				"000" => "0",
+				"100" => "1",
+				"010" => "0",
+				"110" => "1",
+				"001" => "0",
+				"011" => "1",
+				"101" => "0",
+				"111" => "1"
 			}
 		)
 	end
 	
 	def test_mux4
-		s = Simulation.new
-		c = Multiplexer4.new(s,"comp",nil)
-		
-		help_test_logic_table(s,c,
+		comp = ComponentGroup.build_mux4(@sim)		
+		help_test_component_group_cases(comp,
 			{
-				[0,0,0,0,0,0] => [0],
-				[1,0,0,0,0,0] => [0],
-				[0,1,0,0,0,0] => [0],
-				[1,1,0,0,0,0] => [0],
-				[0,0,1,0,0,0] => [0],
-				[1,0,1,0,0,0] => [0],
-				[0,1,1,0,0,0] => [0],
-				[1,1,1,0,0,0] => [0],
-				[0,0,0,1,0,0] => [1],
-				[1,0,0,1,0,0] => [1],
-				[0,1,0,1,0,0] => [1],
-				[1,1,0,1,0,0] => [1],
-				[0,0,1,1,0,0] => [1],
-				[1,0,1,1,0,0] => [1],
-				[0,1,1,1,0,0] => [1],
-				[1,1,1,1,0,0] => [1],	
-				[0,0,0,0,0,1] => [0],
-				[1,0,0,0,0,1] => [0],
-				[0,1,0,0,0,1] => [0],
-				[1,1,0,0,0,1] => [0],
-				[0,0,1,0,0,1] => [1],
-				[1,0,1,0,0,1] => [1],
-				[0,1,1,0,0,1] => [1],
-				[1,1,1,0,0,1] => [1],
-				[0,0,0,1,0,1] => [0],
-				[1,0,0,1,0,1] => [0],
-				[0,1,0,1,0,1] => [0],
-				[1,1,0,1,0,1] => [0],
-				[0,0,1,1,0,1] => [1],
-				[1,0,1,1,0,1] => [1],
-				[0,1,1,1,0,1] => [1],
-				[1,1,1,1,0,1] => [1],				
-				[0,0,0,0,1,0] => [0],
-				[1,0,0,0,1,0] => [0],
-				[0,1,0,0,1,0] => [1],
-				[1,1,0,0,1,0] => [1],
-				[0,0,1,0,1,0] => [0],
-				[1,0,1,0,1,0] => [0],
-				[0,1,1,0,1,0] => [1],
-				[1,1,1,0,1,0] => [1],
-				[0,0,0,1,1,0] => [0],
-				[1,0,0,1,1,0] => [0],
-				[0,1,0,1,1,0] => [1],
-				[1,1,0,1,1,0] => [1],
-				[0,0,1,1,1,0] => [0],
-				[1,0,1,1,1,0] => [0],
-				[0,1,1,1,1,0] => [1],
-				[1,1,1,1,1,0] => [1],		
-				[0,0,0,0,1,1] => [0],
-				[1,0,0,0,1,1] => [1],
-				[0,1,0,0,1,1] => [0],
-				[1,1,0,0,1,1] => [1],
-				[0,0,1,0,1,1] => [0],
-				[1,0,1,0,1,1] => [1],
-				[0,1,1,0,1,1] => [0],
-				[1,1,1,0,1,1] => [1],
-				[0,0,0,1,1,1] => [0],
-				[1,0,0,1,1,1] => [1],
-				[0,1,0,1,1,1] => [0],
-				[1,1,0,1,1,1] => [1],
-				[0,0,1,1,1,1] => [0],
-				[1,0,1,1,1,1] => [1],
-				[0,1,1,1,1,1] => [0],
-				[1,1,1,1,1,1] => [1]					
+				"000000" => "0",
+				"100000" => "1",
+				"010000" => "0",
+				"110000" => "1",
+				"001000" => "0",
+				"101000" => "1",
+				"011000" => "0",
+				"111000" => "1",
+				"000100" => "0",
+				"100100" => "1",
+				"010100" => "0",
+				"110100" => "1",
+				"001100" => "0",
+				"101100" => "1",
+				"011100" => "0",
+				"111100" => "1",	
+				"000001" => "0",
+				"100001" => "0",
+				"010001" => "1",
+				"110001" => "1",
+				"001001" => "0",
+				"101001" => "0",
+				"011001" => "1",
+				"111001" => "1",
+				"000101" => "0",
+				"100101" => "0",
+				"010101" => "1",
+				"110101" => "1",
+				"001101" => "0",
+				"101101" => "0",
+				"011101" => "1",
+				"111101" => "1",				
+				"000010" => "0",
+				"100010" => "0",
+				"010010" => "0",
+				"110010" => "0",
+				"001010" => "1",
+				"101010" => "1",
+				"011010" => "1",
+				"111010" => "1",
+				"000110" => "0",
+				"100110" => "0",
+				"010110" => "0",
+				"110110" => "0",
+				"001110" => "1",
+				"101110" => "1",
+				"011110" => "1",
+				"111110" => "1",		
+				"000011" => "0",
+				"100011" => "0",
+				"010011" => "0",
+				"110011" => "0",
+				"001011" => "0",
+				"101011" => "0",
+				"011011" => "0",
+				"111011" => "0",
+				"000111" => "1",
+				"100111" => "1",
+				"010111" => "1",
+				"110111" => "1",
+				"001111" => "1",
+				"101111" => "1",
+				"011111" => "1",
+				"111111" => "1"					
 			}
 		)
-	end	
+	end
 	
 	def test_mux8
-		s = Simulation.new()
-		c = Multiplexer8.new(s,"comp",nil)
-		help_test_logic_table(s,c,		
+		comp = ComponentGroup.build_mux8(@sim)
+		
+		help_test_component_group_cases(comp,
 			{
-			[0,0,0,0,0,0,0,0,  0,0,0] => [0],
-			[1,1,1,1,1,1,1,0,  0,0,0] => [0],
-			[1,1,1,1,1,1,1,1,  0,0,0] => [1],
-			[0,0,0,1,0,0,0,0,  1,0,0] => [1] # lsb?			
+			"10000000000" => "1",
+			"01000000001" => "1",
+			"00100000010" => "1",
+			"00010000011" => "1",
+			"00001000100" => "1",
+			"00000100101" => "1",
+			"00000010110" => "1",
+			"00000001111" => "1",
+			"00000000000" => "0",
+			"01111111000" => "0",
+			"11111111000" => "1"	
 			}
 		)
 	end	
 	
 	def test_mux16
-		s = Simulation.new()
-		c = Multiplexer16.new(s,"comp",nil)
-		
-		help_test_logic_table(s,c,		
+		comp = ComponentGroup.build_mux16(@sim)		
+		help_test_component_group_cases(comp,
 			{
-				[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  0,0,0,0] => [0],
-				[0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,  0,0,0,1] => [1],
-				[0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,  0,1,0,0] => [1],
-				[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  0,1,0,0] => [0],
-				[0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,  1,0,0,1] => [1],
-				[0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  1,1,1,0] => [1]
+				"00000000000000000000" => "0",
+				"10000000000000000000" => "1",
+				"01111111111111110000" => "0",
+				"00000000000000011111" => "1",
+				"00000000010000001001" => "1",				
+				"00000000000000101110" => "1"
 			}
 		)		
 		
 	end
 	
 	def test_demux2
-		s = Simulation.new()
-		c = Demux2.new(s,"comp",nil)
-		help_test_logic_table(s,c,
+		comp = ComponentGroup.build_demux2(@sim)		
+		help_test_component_group_cases(comp,
 			{
-				[0,0] => [0,0],
-				[1,0] => [0,1],
-				[0,1] => [0,0],
-				[1,1] => [1,0]
+				"00" => "00",
+				"10" => "10",
+				"01" => "00",
+				"11" => "01"
 			}
 		)
 	end
 	
 	def test_demux4
-		s = Simulation.new()
-		c = Demux4.new(s,"comp",nil)
-		help_test_logic_table(s,c,
-		{
-			[0,0,0] => [0,0,0,0],
-			[0,0,1] => [0,0,0,0],
-			[0,1,0] => [0,0,0,0],
-			[0,1,1] => [0,0,0,0],
-			[1,0,0] => [0,0,0,1],
-			[1,0,1] => [0,0,1,0],
-			[1,1,0] => [0,1,0,0],
-			[1,1,1] => [1,0,0,0]
+		comp = ComponentGroup.build_demux4(@sim)		
+		help_test_component_group_cases(comp,
+			{
+			"000" => "0000",
+			"001" => "0000",
+			"010" => "0000",
+			"011" => "0000",
+			"100" => "1000",
+			"101" => "0100",
+			"110" => "0010",
+			"111" => "0001"
 		})
 	end
 
 	def test_demux8
-		s = Simulation.new()
-		c = Demux8.new(s,"comp",nil)
-		help_test_logic_table(s,c,
+		comp = ComponentGroup.build_demux8(@sim)		
+		help_test_component_group_cases(comp,
 			{
-				[0, 0,0,0] => [0,0,0,0,0,0,0,0],
-				[0, 1,0,1] => [0,0,0,0,0,0,0,0],
-				[1, 0,0,0] => [0,0,0,0,0,0,0,1], 
-				[1, 0,0,1] => [0,0,0,0,0,0,1,0], 
-				[1, 1,0,0] => [0,0,0,1,0,0,0,0], 
-				[1, 1,0,1] => [0,0,1,0,0,0,0,0], 
-				[1, 1,1,1] => [1,0,0,0,0,0,0,0]  
+				"0000" => "00000000",
+				"0101" => "00000000",
+				"1000" => "10000000", 
+				"1001" => "01000000", 
+				"1100" => "00001000", 
+				"1101" => "00000100", 
+				"1110" => "00000010",
+				"1111" => "00000001"  
 			}
 		)
 	end
 	
 	def test_demux16
-		s = Simulation.new()
-		c = Demux16.new(s,"comp",nil)
-		help_test_logic_table(s,c,
+		comp = ComponentGroup.build_demux16(@sim)		
+		help_test_component_group_cases(comp,
 			{
-				[0,0,0,0,0] => [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-				[0,0,1,0,1] => [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-				[1,0,0,0,0] => [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], 
-				[1,0,0,0,1] => [0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0], 
-				[1,0,1,0,0] => [0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0], 
-				[1,0,1,0,1] => [0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0], 
-				[1,0,1,1,1] => [0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0]  
+				"00000" => "0000000000000000",
+				"00101" => "0000000000000000",
+				"10000" => "1000000000000000", 
+				"10001" => "0100000000000000", 
+				"10100" => "0000100000000000", 
+				"10101" => "0000010000000000", 
+				"10111" => "0000000100000000"  
 			}
 		)
 	end
 	
-	
-	def test_ram8x8load
-		s = Simulation.new()
-		c = RAM8x8.new(s,"comp",nil)	
-		
-		c.set_input_values([0,0,0,0,0,0,0,0,  0,0,0, 0])
-		c.override(["00000000","00000001","00000010","00000011","00000100","00000101","00000110","00000111"])
-		help_test_case(s,c,[0,0,0,0,0,0,0,0,  1,0,1, 0],[0,0,0,0,0,1,0,1]) 
-		# puts c.dump
+	def test_bus8x8
+		comp = ComponentGroup.build_bus8x8(@sim)
+
+		setup = "01000001" + # 1
+			    "01000010" + # 2
+			    "01000011" + # 3
+			    "01000100" + # 4
+			    "01000101" + # 5
+			    "01000110" + # 6
+			    "01000111" + # 7
+			    "01001000"   # 8
+
+		help_test_component_group_cases(comp,
+			{
+				setup + "10000000" => "01000001",
+				setup + "01000000" => "01000010",
+				setup + "00100000" => "01000011",
+				setup + "00010000" => "01000100",
+				setup + "00001000" => "01000101",
+				setup + "00000100" => "01000110",
+				setup + "00000010" => "01000111",
+				setup + "00000001" => "01001000"
+			}
+		)
 	end
 	
-	def test_ram8x64load
-		s = Simulation.new()
-		c = RAM8x64.new(s,"comp",nil)
-				
-		c.set_input_values([0,0,0,0,0,0,0,0,  0,0,0,0,0,0, 0])
-		c.load_file("debug64.txt")
+	#################################################################################
+	#########  Test clocked component groups
+	#################################################################################
+	
+	def test_bit_register		
+	
+		comp = ComponentGroup.build_bit_register(@sim, :high)
 		
-		help_test_case(s,c,[1,1,1,1,1,1,1,1,  0,0,1,1,1,0, 0],[0,0,0,0,1,1,1,0]) # load num into addr 6
+		help_test_component_group_case(comp,"10","0") # inpu1 doesn'1 do any1hing un1il load is se1
+		help_test_component_group_case(comp,"11","1") # load reg, ou1 should re0lec1 1he new value
+		help_test_component_group_case(comp,"00","1") # ou1pu1 s1icks even when inpu1 changes
+
 	end
 	
+	def test_register8		
+		comp = ComponentGroup.build_register(@sim, 8)
+		
+		help_test_component_group_case(comp,"111111110","00000000") # inpu1 doesn'1 do any1hing un1il load is se1
+		help_test_component_group_case(comp,"111111111","11111111") # load se1, ou1 should re0lec1 1he new value
+		help_test_component_group_case(comp,"100101010","11111111") # ou1pu1 is s1ill showing old ou1pu1 in spi1e o0 inpu1 changing
+		help_test_component_group_case(comp,"000111011","00011101") # load set, out should reflect the new value
+	end
+	
+	#################################################################################
+	#########  Test RAM Components
+	#################################################################################	
+
 	def test_ram8x8
-		s = Simulation.new()
-		c = RAM8x8.new(s,"comp",nil)							
-		#                 ## data               sel   ld
-		help_test_case(s,c,[0,0,0,0,0,0,0,0,  0,0,0, 0],[0,0,0,0,0,0,0,0]) # sanity check
-		help_test_case(s,c,[0,0,0,0,0,0,0,1,  0,0,0, 1],[0,0,0,0,0,0,0,1]) # load 1 into addr 0
-		help_test_case(s,c,[0,1,0,1,0,1,0,1,  0,1,0, 0],[0,0,0,0,0,0,0,0]) # verify addr 2 is empty
-		help_test_case(s,c,[0,0,0,0,0,0,0,1,  0,0,0, 0],[0,0,0,0,0,0,0,1]) # verify 1 still in addr 0 
-		help_test_case(s,c,[0,1,0,1,0,1,0,1,  0,1,0, 1],[0,1,0,1,0,1,0,1]) # load num into addr 2
-		help_test_case(s,c,[0,0,0,0,1,1,0,1,  1,0,1, 1],[0,0,0,0,1,1,0,1]) # load num into addr 5
-		help_test_case(s,c,[0,0,0,1,0,1,1,0,  1,1,0, 1],[0,0,0,1,0,1,1,0]) # load num into addr 6
-		help_test_case(s,c,[0,0,1,0,0,1,1,1,  1,1,1, 1],[0,0,1,0,0,1,1,1]) # load num into addr 7
-
-		
-		# puts c.dump
+		comp = ComponentGroup.build_ram8x8(@sim)#    ADRL				
+		help_test_component_group_case(comp,"000000000000","00000000") # sanity check
+		help_test_component_group_case(comp,"000000010001","00000001") # load 1 into addr 0
+		help_test_component_group_case(comp,"010101010100","00000000") # verify addr 2 is empty
+		help_test_component_group_case(comp,"000000010000","00000001") # verify 1 still in addr 0 
+		help_test_component_group_case(comp,"010101010101","01010101") # load num into addr 2
+		help_test_component_group_case(comp,"000011011011","00001101") # load num into addr 5
+		help_test_component_group_case(comp,"000101101101","00010110") # load num into addr 6
+		help_test_component_group_case(comp,"001001111111","00100111") # load num into addr 7		
 	end 
-	
+		
 	def test_ram8x64
-		s = Simulation.new()
-		c = RAM8x64.new(s,"comp",nil)	
+		initial_data = File.readlines("util/debug64.txt").collect do |line| line.strip end		
+		comp = ComponentGroup.build_ram8x64(@sim, :high, initial_data)		
 
-		c.load_file("debug64.txt")
 		
 		#                 ## data               sel        ld
-		help_test_case(s,c,[1,1,0,0,0,0,0,0,  0,0,0,0,0,0, 0],[0,0,0,0,0,0,0,0]) # sanity check
-		help_test_case(s,c,[1,1,0,0,0,0,0,0,  0,0,0,0,0,0, 1],[1,1,0,0,0,0,0,0]) # sanity check		
-		help_test_case(s,c,[0,0,0,0,0,0,0,1,  0,0,0,0,0,0, 1],[0,0,0,0,0,0,0,1]) # load 1 into addr 0
-		help_test_case(s,c,[0,1,0,1,0,1,0,1,  0,0,0,0,1,0, 0],[0,0,0,0,0,0,1,0]) # verify addr 2 is empty
-		help_test_case(s,c,[0,0,0,0,0,0,0,1,  0,0,0,0,0,0, 0],[0,0,0,0,0,0,0,1]) # verify 1 still in addr 0 
-		help_test_case(s,c,[0,1,0,1,0,1,0,1,  0,0,0,0,1,0, 1],[0,1,0,1,0,1,0,1]) # load num into addr 2
-		help_test_case(s,c,[0,0,0,0,0,1,0,1,  0,0,0,1,0,1, 1],[0,0,0,0,0,1,0,1]) # load num into addr 5
-		help_test_case(s,c,[0,0,0,0,0,1,1,0,  0,0,0,1,1,0, 1],[0,0,0,0,0,1,1,0]) # load num into addr 6
-		help_test_case(s,c,[0,0,0,0,0,1,1,1,  0,0,0,1,1,1, 1],[0,0,0,0,0,1,1,1]) # load num into addr 7
-		
-		help_test_case(s,c,[0,1,0,1,0,1,0,1,  1,0,0,0,1,0, 0],[0,0,1,0,0,0,1,0]) # test high bits
-		help_test_case(s,c,[0,0,0,0,0,1,0,1,  1,0,0,1,0,1, 0],[0,0,1,0,0,1,0,1]) # test high bits
-		help_test_case(s,c,[0,0,0,0,0,1,1,0,  0,1,0,1,1,0, 0],[0,0,0,1,0,1,1,0]) # test high bits
-		help_test_case(s,c,[0,0,0,0,0,1,1,1,  1,1,1,1,1,1, 0],[0,0,1,1,1,1,1,1]) # test high bits
-		help_test_case(s,c,[0,1,0,1,0,1,0,1,  1,0,1,0,1,0, 0],[0,0,1,0,1,0,1,0]) # test high bits
-		help_test_case(s,c,[0,0,0,0,0,1,0,1,  0,0,1,1,0,1, 0],[0,0,0,0,1,1,0,1]) # test high bits
-		help_test_case(s,c,[0,0,0,0,0,1,1,0,  1,0,0,1,1,0, 0],[0,0,1,0,0,1,1,0]) # test high bits
-		help_test_case(s,c,[0,0,0,0,0,1,1,1,  0,0,1,1,1,1, 0],[0,0,0,0,1,1,1,1]) # test high bits
-		
+		help_test_component_group_case(comp,"110000000000000","00000000") # sanity check
+		help_test_component_group_case(comp,"110000000000001","11000000") # sanity check		
+		help_test_component_group_case(comp,"000000010000001","00000001") # load 1 into addr 0
+		help_test_component_group_case(comp,"010101010000100","00000010") # verify addr 2 is empty
+		help_test_component_group_case(comp,"000000010000000","00000001") # verify 1 still in addr 0 
+		help_test_component_group_case(comp,"010101010000101","01010101") # load num into addr 2
+		help_test_component_group_case(comp,"000001010001011","00000101") # load num into addr 5
+		help_test_component_group_case(comp,"000001100001101","00000110") # load num into addr 6
+		help_test_component_group_case(comp,"000001110001111","00000111") # load num into addr 7
+		help_test_component_group_case(comp,"010101011000100","00100010") # test high bits
+		help_test_component_group_case(comp,"000001011001010","00100101")
+		help_test_component_group_case(comp,"000001100101100","00010110")
+		help_test_component_group_case(comp,"000001111111110","00111111")
+		help_test_component_group_case(comp,"010101011010100","00101010")
+		help_test_component_group_case(comp,"000001010011010","00001101")
+		help_test_component_group_case(comp,"000001101001100","00100110")
+		help_test_component_group_case(comp,"000001110011110","00001111")		
 		
 	end 	
-	
-	def test_ram8x256load
-		s = Simulation.new()
-		c = RAM8x256.new(s,"comp",nil)	
+		
+	def test_ram8x256
+		initial_data = File.readlines("util/debug256.txt").collect do |line| line.strip end	
+		comp = ComponentGroup.build_ram8x256(@sim, :high, initial_data)		
 
-		c.load_file("debug256.txt")
 		#reads
-		help_test_case(s,c,[1,0,0,0,0,1,1,0,  0,0,0,0,0,0,0,0, 0],[0,0,0,0,0,0,0,0]) 
-		help_test_case(s,c,[1,0,0,0,0,1,1,0,  0,0,1,0,0,0,1,0, 0],[0,0,1,0,0,0,1,0]) 
-		help_test_case(s,c,[1,0,0,0,0,1,1,0,  0,0,1,0,0,1,0,1, 0],[0,0,1,0,0,1,0,1]) 
-		help_test_case(s,c,[1,0,0,0,0,1,1,0,  0,0,0,1,0,1,1,0, 0],[0,0,0,1,0,1,1,0]) 
-		help_test_case(s,c,[1,0,0,0,0,1,1,0,  0,0,1,1,1,1,1,1, 0],[0,0,1,1,1,1,1,1])
-		help_test_case(s,c,[1,0,0,0,0,1,1,0,  1,0,0,0,0,0,0,0, 0],[1,0,0,0,0,0,0,0]) 
-		help_test_case(s,c,[1,0,0,0,0,1,1,0,  0,1,1,0,0,0,1,0, 0],[0,1,1,0,0,0,1,0]) 
-		help_test_case(s,c,[1,0,0,0,0,1,1,0,  1,0,1,0,0,1,0,1, 0],[1,0,1,0,0,1,0,1]) 
-		help_test_case(s,c,[1,0,0,0,0,1,1,0,  0,1,0,1,0,1,1,0, 0],[0,1,0,1,0,1,1,0]) 
-		help_test_case(s,c,[1,0,0,0,0,1,1,0,  1,0,1,1,1,1,1,1, 0],[1,0,1,1,1,1,1,1])
+		help_test_component_group_case(comp,"10000110000000000","00000000") 
+		help_test_component_group_case(comp,"10000110001000100","00100010") 
+		help_test_component_group_case(comp,"10000110001001010","00100101") 
+		help_test_component_group_case(comp,"10000110000101100","00010110") 
+		help_test_component_group_case(comp,"10000110001111110","00111111")
+		help_test_component_group_case(comp,"10000110100000000","10000000") 
+		help_test_component_group_case(comp,"10000110011000100","01100010") 
+		help_test_component_group_case(comp,"10000110101001010","10100101") 
+		help_test_component_group_case(comp,"10000110010101100","01010110") 
+		help_test_component_group_case(comp,"10000110101111110","10111111")
 		# writes
-		help_test_case(s,c,[1,0,0,0,0,1,1,0,  0,0,0,0,0,0,0,0, 1],[1,0,0,0,0,1,1,0]) 
-		help_test_case(s,c,[1,0,0,0,0,1,1,0,  0,0,1,0,0,0,1,0, 1],[1,0,0,0,0,1,1,0]) 
-		help_test_case(s,c,[1,0,0,0,0,1,1,0,  0,0,1,0,0,1,0,1, 1],[1,0,0,0,0,1,1,0]) 
-		help_test_case(s,c,[1,0,0,0,0,1,1,0,  0,0,0,1,0,1,1,0, 1],[1,0,0,0,0,1,1,0]) 
-		help_test_case(s,c,[1,0,0,0,0,1,1,0,  0,0,1,1,1,1,1,1, 1],[1,0,0,0,0,1,1,0])
-		help_test_case(s,c,[1,0,0,0,0,1,1,0,  1,0,0,0,0,0,0,0, 1],[1,0,0,0,0,1,1,0]) 
-		help_test_case(s,c,[1,0,0,0,0,1,1,0,  0,1,1,0,0,0,1,0, 1],[1,0,0,0,0,1,1,0]) 
-		help_test_case(s,c,[1,0,0,0,0,1,1,0,  1,0,1,0,0,1,0,1, 1],[1,0,0,0,0,1,1,0]) 
-		help_test_case(s,c,[1,0,0,0,0,1,1,0,  0,1,0,1,0,1,1,0, 1],[1,0,0,0,0,1,1,0]) 
-		help_test_case(s,c,[1,0,0,0,0,1,1,0,  1,0,1,1,1,1,1,1, 1],[1,0,0,0,0,1,1,0])
+		help_test_component_group_case(comp,"10000110000000001","10000110") 
+		help_test_component_group_case(comp,"10000110001000101","10000110") 
+		help_test_component_group_case(comp,"10000110001001011","10000110") 
+		help_test_component_group_case(comp,"10000110000101101","10000110") 
+		help_test_component_group_case(comp,"10000110001111111","10000110")
+		help_test_component_group_case(comp,"10000110100000001","10000110") 
+		help_test_component_group_case(comp,"10000110011000101","10000110") 
+		help_test_component_group_case(comp,"10000110101001011","10000110") 
+		help_test_component_group_case(comp,"10000110010101101","10000110") 
+		help_test_component_group_case(comp,"10000110101111111","10000110")
 	end
 	
-	def test_ram8x1024load
-		s = Simulation.new()
-		c = RAM8x1024.new(s,"comp",nil)	
-
-		c.load_file("debug1024.txt")  #19,8
-		#reads
-		help_test_case(s,c,[1,0,0,0,0,1,1,0,  0,0,0,0,0,0,0,0,0,0, 0],[0,0,0,0,0,0,0,0]) 
-		help_test_case(s,c,[1,0,0,0,0,1,1,0,  0,0,0,0,1,0,0,0,1,0, 0],[0,0,1,0,0,0,1,0]) 
-		help_test_case(s,c,[1,0,0,0,0,1,1,0,  0,0,0,0,1,0,0,1,0,1, 0],[0,0,1,0,0,1,0,1]) 
-		help_test_case(s,c,[1,0,0,0,0,1,1,0,  0,0,0,0,0,1,0,1,1,0, 0],[0,0,0,1,0,1,1,0]) 
-		help_test_case(s,c,[1,0,0,0,0,1,1,0,  0,0,0,0,1,1,1,1,1,1, 0],[0,0,1,1,1,1,1,1])
-		help_test_case(s,c,[1,0,0,0,0,1,1,0,  0,0,1,0,0,0,0,0,0,0, 0],[1,0,0,0,0,0,0,0]) 
-		help_test_case(s,c,[1,0,0,0,0,1,1,0,  0,0,0,1,1,0,0,0,1,0, 0],[0,1,1,0,0,0,1,0]) 
-		help_test_case(s,c,[1,0,0,0,0,1,1,0,  0,0,1,0,1,0,0,1,0,1, 0],[1,0,1,0,0,1,0,1]) 
-		help_test_case(s,c,[1,0,0,0,0,1,1,0,  0,0,0,1,0,1,0,1,1,0, 0],[0,1,0,1,0,1,1,0]) 
-		help_test_case(s,c,[1,0,0,0,0,1,1,0,  0,0,1,0,1,1,1,1,1,1, 0],[1,0,1,1,1,1,1,1])
+	def test_ram8x1024
+		initial_data = File.readlines("util/debug1024.txt").collect do |line| line.strip end	
+		comp = ComponentGroup.build_ram8x1024(@sim, :high, initial_data)
+		
+		#reads                               __data_||__addr__|L
+		help_test_component_group_case(comp,"1000011000000000000","00000000") 
+		help_test_component_group_case(comp,"1000011000001000100","00100010") 
+		help_test_component_group_case(comp,"1000011000001001010","00100101") 
+		help_test_component_group_case(comp,"1000011000000101100","00010110") 
+		help_test_component_group_case(comp,"1000011000001111110","00111111")
+		help_test_component_group_case(comp,"1000011000100000000","10000000") 
+		help_test_component_group_case(comp,"1000011000011000100","01100010") 
+		help_test_component_group_case(comp,"1000011000101001010","10100101") 
+		help_test_component_group_case(comp,"1000011000010101100","01010110") 
+		help_test_component_group_case(comp,"1000011000101111110","10111111")
 		# writes
-		help_test_case(s,c,[1,0,0,0,0,1,1,0,  0,0,0,0,0,0,0,0,0,0, 1],[1,0,0,0,0,1,1,0]) 
-		help_test_case(s,c,[1,0,0,0,0,1,1,0,  0,0,0,0,1,0,0,0,1,0, 1],[1,0,0,0,0,1,1,0]) 
-		help_test_case(s,c,[1,0,0,0,0,1,1,0,  0,0,0,0,1,0,0,1,0,1, 1],[1,0,0,0,0,1,1,0]) 
-		help_test_case(s,c,[1,0,0,0,0,1,1,0,  0,0,0,0,0,1,0,1,1,0, 1],[1,0,0,0,0,1,1,0]) 
-		help_test_case(s,c,[1,0,0,0,0,1,1,0,  0,0,0,0,1,1,1,1,1,1, 1],[1,0,0,0,0,1,1,0])
-		help_test_case(s,c,[1,0,0,0,0,1,1,0,  0,0,1,0,0,0,0,0,0,0, 1],[1,0,0,0,0,1,1,0]) 
-		help_test_case(s,c,[1,0,0,0,0,1,1,0,  0,0,0,1,1,0,0,0,1,0, 1],[1,0,0,0,0,1,1,0]) 
-		help_test_case(s,c,[1,0,0,0,0,1,1,0,  0,0,1,0,1,0,0,1,0,1, 1],[1,0,0,0,0,1,1,0]) 
-		help_test_case(s,c,[1,0,0,0,0,1,1,0,  0,0,0,1,0,1,0,1,1,0, 1],[1,0,0,0,0,1,1,0]) 
-		help_test_case(s,c,[1,0,0,0,0,1,1,0,  0,0,1,0,1,1,1,1,1,1, 1],[1,0,0,0,0,1,1,0])
+		help_test_component_group_case(comp,"1000011000000000001","10000110") 
+		help_test_component_group_case(comp,"1000011000001000101","10000110") 
+		help_test_component_group_case(comp,"1000011000001001011","10000110") 
+		help_test_component_group_case(comp,"1000011000000101101","10000110") 
+		help_test_component_group_case(comp,"1000011000001111111","10000110")
+		help_test_component_group_case(comp,"1000011000100000001","10000110") 
+		help_test_component_group_case(comp,"1000011000011000101","10000110") 
+		help_test_component_group_case(comp,"1000011000101001011","10000110") 
+		help_test_component_group_case(comp,"1000011000010101101","10000110") 
+		help_test_component_group_case(comp,"1000011000101111111","10000110")
 	end
 	
-	def test_rom8x1024load
-		s = Simulation.new()
-		c = ROM8x1024.new(s,"comp",nil)	
-
-		c.load_file("debug1024.txt")  #19,8
+	def test_rom8x16
+		data = File.readlines("util/debug1024.txt").first(16).collect do |line| line.strip end
+		comp = ComponentGroup.build_rom8x16(@sim,data)
+		
+		help_test_component_group_case(comp,"0000","00000000") 
+		help_test_component_group_case(comp,"0010","00000010") 
+		help_test_component_group_case(comp,"0101","00000101") 
+		help_test_component_group_case(comp,"0110","00000110") 
+		help_test_component_group_case(comp,"1111","00001111")
+	end
+	
+	def test_rom8x256
+		data = File.readlines("util/debug1024.txt").first(256).collect do |line| line.strip end
+		comp = ComponentGroup.build_rom8x256(@sim,data)
+		
+		help_test_component_group_case(comp,"00000000","00000000") 
+		help_test_component_group_case(comp,"00000001","00000001") 
+		help_test_component_group_case(comp,"00000101","00000101")
+		help_test_component_group_case(comp,"00100010","00100010") 
+		help_test_component_group_case(comp,"01010101","01010101") 
+		help_test_component_group_case(comp,"01100110","01100110") 
+		help_test_component_group_case(comp,"11111111","11111111")
+	end	
+	
+	def test_rom8x1024
+		data = File.readlines("util/debug1024.txt").collect do |line| line.strip end	
+		comp = ComponentGroup.build_rom8x1024(@sim, data)
+		
 		#reads
-		help_test_case(s,c,[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0]) 
-		help_test_case(s,c,[0,0,0,0,1,0,0,0,1,0],[0,0,1,0,0,0,1,0]) 
-		help_test_case(s,c,[0,0,0,0,1,0,0,1,0,1],[0,0,1,0,0,1,0,1]) 
-		help_test_case(s,c,[0,0,0,0,0,1,0,1,1,0],[0,0,0,1,0,1,1,0]) 
-		help_test_case(s,c,[0,0,0,0,1,1,1,1,1,1],[0,0,1,1,1,1,1,1])
-		help_test_case(s,c,[0,0,1,0,0,0,0,0,0,0],[1,0,0,0,0,0,0,0]) 
-		help_test_case(s,c,[0,0,0,1,1,0,0,0,1,0],[0,1,1,0,0,0,1,0]) 
-		help_test_case(s,c,[0,0,1,0,1,0,0,1,0,1],[1,0,1,0,0,1,0,1]) 
-		help_test_case(s,c,[0,0,0,1,0,1,0,1,1,0],[0,1,0,1,0,1,1,0]) 
-		help_test_case(s,c,[0,0,1,0,1,1,1,1,1,1],[1,0,1,1,1,1,1,1])
+		help_test_component_group_case(comp,"0000000000","00000000") 
+		help_test_component_group_case(comp,"0000100010","00100010") 
+		help_test_component_group_case(comp,"0000100101","00100101") 
+		help_test_component_group_case(comp,"0000010110","00010110") 
+		help_test_component_group_case(comp,"0000111111","00111111")
+		help_test_component_group_case(comp,"0010000000","10000000") 
+		help_test_component_group_case(comp,"0001100010","01100010") 
+		help_test_component_group_case(comp,"0010100101","10100101") 
+		help_test_component_group_case(comp,"0001010110","01010110") 
+		help_test_component_group_case(comp,"0010111111","10111111")
 	end
 	
 	def test_programcounter
-		s = Simulation.new()
-		c = ProgramCounter.new(s,"comp",nil)		
-				
-		#                                   inc,jmp
-		help_test_case(s,c,[0,0,0,0,0,0,0,0,  0,0],[0,0,0,0,0,0,0,0])
-		#                                   inc,jmp		
-		help_test_case(s,c,[0,0,0,0,0,0,0,0,  1,0],[0,0,0,0,0,0,0,1])	
-		#                                   inc,jmp
-		help_test_case(s,c,[0,0,0,0,0,0,0,0,  1,0],[0,0,0,0,0,0,1,0])	
-		#                                   inc,jmp
-		help_test_case(s,c,[0,0,0,0,0,0,0,0,  0,0],[0,0,0,0,0,0,1,0])			
-		#                                   inc,jmp
-		help_test_case(s,c,[0,0,0,0,0,0,0,0,  0,0],[0,0,0,0,0,0,1,0])	
-		#                                   inc,jmp
-		help_test_case(s,c,[0,0,0,0,0,0,0,0,  1,0],[0,0,0,0,0,0,1,1])	
+		comp = ComponentGroup.build_program_counter(@sim)
+		
+		help_test_component_group_case(comp, "0000000000","00000000")
+		help_test_component_group_case(comp, "0000000000","00000000")
+		help_test_component_group_case(comp, "0000000010","00000001")			
+		help_test_component_group_case(comp, "0000000010","00000010")			
+		help_test_component_group_case(comp, "0000000000","00000010")					
+		help_test_component_group_case(comp, "0000000000","00000010")	
+		help_test_component_group_case(comp, "0000000010","00000011")	
 	end
 	
 	def test_programcounterjump
-		s = Simulation.new()
-		c = ProgramCounter.new(s,"comp",nil)		
-				
-		#                                   inc,jmp
-		help_test_case(s,c,[0,0,0,0,0,0,0,0, 0,0],[0,0,0,0,0,0,0,0])
-		#                                   inc,jmp		
-		help_test_case(s,c,[0,0,0,0,0,0,0,0, 1,0],[0,0,0,0,0,0,0,1])	
-		#                                   inc,jmp
-		help_test_case(s,c,[0,0,0,0,0,0,0,0, 1,0],[0,0,0,0,0,0,1,0])	
-		#                                   inc,jmp
-		help_test_case(s,c,[0,0,0,0,0,0,0,0, 1,1],[0,0,0,0,0,0,0,0])			
-		#                                   inc,jmp
-		help_test_case(s,c,[0,0,0,0,0,0,0,0, 1,0],[0,0,0,0,0,0,0,1])	
-		#                                   inc,jmp
-		help_test_case(s,c,[0,0,0,0,0,0,0,0, 1,1],[0,0,0,0,0,0,0,0])
+		comp = ComponentGroup.build_program_counter(@sim)
+		
+		help_test_component_group_case(comp, "0000000000","00000000")
+		help_test_component_group_case(comp, "0000000000","00000000")
+		help_test_component_group_case(comp, "0000000010","00000001")			
+		help_test_component_group_case(comp, "0000000010","00000010")
+		help_test_component_group_case(comp, "0000000010","00000011")		
+		help_test_component_group_case(comp, "0000100011","00001000")
+		help_test_component_group_case(comp, "0010100011","00101000")
+		help_test_component_group_case(comp, "1110100001","00101000")
+		help_test_component_group_case(comp, "0000000010","00101001")
+		help_test_component_group_case(comp, "0000000010","00101010")
+		help_test_component_group_case(comp, "0000000010","00101011")
 	end
 	
 	def test_microcounter
-		s = Simulation.new()
-		c = MicroCounter.new(s, "comp", nil, 4)
+		comp = ComponentGroup.build_microcounter(@sim)
 		
 		#                           J E Z
-		help_test_case(s,c,[0,0,0,0,0,0,0],[0,0,0,0])
-		help_test_case(s,c,[0,0,0,0,0,1,0],[0,0,0,1])
-		help_test_case(s,c,[0,0,0,0,0,1,0],[0,0,1,0])
-		help_test_case(s,c,[0,0,0,0,0,1,0],[0,0,1,1])
-		help_test_case(s,c,[0,0,0,0,0,1,0],[0,1,0,0])
-		help_test_case(s,c,[0,0,0,0,0,1,0],[0,1,0,1])
-		help_test_case(s,c,[0,0,0,0,0,1,0],[0,1,1,0])
-		help_test_case(s,c,[0,0,0,0,0,1,0],[0,1,1,1])			
+		help_test_component_group_case(comp,"0000000","0000")
+		help_test_component_group_case(comp,"0000010","0001")
+		help_test_component_group_case(comp,"0000010","0010")
+		help_test_component_group_case(comp,"0000010","0011")
+		help_test_component_group_case(comp,"0000010","0100")
+		help_test_component_group_case(comp,"0000010","0101")
+		help_test_component_group_case(comp,"0000010","0110")
+		help_test_component_group_case(comp,"0000010","0111")			
 	end
 	
 	def test_microcounterjump
-		s = Simulation.new()
-		c = MicroCounter.new(s, "comp", nil, 4)
+		comp = ComponentGroup.build_microcounter(@sim)
 		
 		#                           J E Z
-		help_test_case(s,c,[0,0,0,0,0,0,0],[0,0,0,0])
-		help_test_case(s,c,[0,0,0,0,0,1,0],[0,0,0,1])
-		help_test_case(s,c,[0,0,0,0,0,1,0],[0,0,1,0])
-		help_test_case(s,c,[0,0,0,0,1,1,0],[0,0,0,0])
-		help_test_case(s,c,[0,0,0,0,0,1,0],[0,0,0,1])
-		help_test_case(s,c,[0,0,0,0,0,1,0],[0,0,1,0])
+		help_test_component_group_case(comp,"0000000","0000")
+		help_test_component_group_case(comp,"0000010","0001")
+		help_test_component_group_case(comp,"0000010","0010")
+		help_test_component_group_case(comp,"0000110","0000")
+		help_test_component_group_case(comp,"0000010","0001")
+		help_test_component_group_case(comp,"0000010","0010")
 	end
 	
 	def test_microcounterzero
-		s = Simulation.new()
-		c = MicroCounter.new(s, "comp", nil, 4)
+		comp = ComponentGroup.build_microcounter(@sim)
 		
 		#                           J E Z
-		help_test_case(s,c,[0,1,0,0,0,0,0],[0,0,0,0])
-		help_test_case(s,c,[0,1,0,0,0,1,0],[0,0,0,1])
-		help_test_case(s,c,[0,1,0,0,0,1,0],[0,0,1,0])
-		help_test_case(s,c,[0,1,0,0,0,1,1],[0,0,0,0])
-		help_test_case(s,c,[0,1,0,0,1,1,1],[0,0,0,0]) # zero overrides jump
-		help_test_case(s,c,[0,1,0,0,0,1,0],[0,0,0,1])
-		help_test_case(s,c,[0,1,0,0,0,1,0],[0,0,1,0])
+		help_test_component_group_case(comp,"0100000","0000")
+		help_test_component_group_case(comp,"0100010","0001")
+		help_test_component_group_case(comp,"0100010","0010")
+		help_test_component_group_case(comp,"0100011","0000")
+		help_test_component_group_case(comp,"0100111","0000") # zero overrides jump
+		help_test_component_group_case(comp,"0100010","0001")
+		help_test_component_group_case(comp,"0100010","0010")
 	end	
 	
-	def test_bus8x8
-		s = Simulation.new()
-		c = Bus8x8.new(s,"comp",nil)
+	def test_microcode
+		data_in = File.readlines("computer1a.rom").collect do |l| l.strip end
+		data_out = File.readlines("computer1b.rom").collect do |l| l.strip end
+	
+		comp = ComponentGroup.build_microcode(@sim, data_in, data_out)
+	
+		# no real tests to be done, but exercise the component
+		help_test_component_group_set_inputs(comp, "0000100000")
+		(0...16).collect do |n|
+			comp.aliased_output(n).output
+		end
+	end
+
+	def test_alu8
+		comp = ComponentGroup.build_alu8(@sim)
 		
-		setup = [0,1,0,0,0,0,0,1, # 1
-			 0,1,0,0,0,0,1,0, # 2
-			 0,1,0,0,0,0,1,1, # 3
-			 0,1,0,0,0,1,0,0, # 4
-			 0,1,0,0,0,1,0,1, # 5
-			 0,1,0,0,0,1,1,0, # 6
-			 0,1,0,0,0,1,1,1, # 7
-			 0,1,0,0,1,0,0,0] # 8
-		help_test_logic_table(s,c,		
-			{
-			 setup + [0,0,0,0,0,0,0,1] => [0,1,0,0,0,0,0,1],
-			 setup + [0,0,0,0,0,1,0,0] => [0,1,0,0,0,0,1,1],
-			 setup + [0,0,1,0,0,0,0,0] => [0,1,0,0,0,1,1,0],
-			 setup + [1,0,0,0,0,0,0,0] => [0,1,0,0,1,0,0,0]
+		help_test_component_group_cases(comp,
+			{			
+			"00000000000000000" => "00000000",
+			"00000001000000000" => "00000001",
+			"00000001000000010" => "00000010",
+			"10000000000000000" => "10000000",
+			"10000000100000000" => "00000000",
+			"11111111111111110" => "11111110",
+			"00001100000010010" => "00010101",			
+			"11000101100111100" => "01100011",			
+			"00011000000010001" => "00010000",
+			"00000000000000001" => "00000000",			
+			"10000000100000001" => "00000000",			
+			"10000000010000001" => "01000000",	
+			"00000111000000011" => "00000110",
+			"00000001000001111" => "11111010"		
 			}
 		)
 	end
+	# def test_computer		
+	# end
 	
-	def test_or4
-		s = Simulation.new()
-		c = OrGate4.new(s,"comp",nil)
-		help_test_logic_table(s,c,
-		{
-			[0,0,0,0] => [0],
-			[0,0,0,1] => [1],
-			[0,0,1,0] => [1],
-			[0,0,1,1] => [1],
-			[0,1,0,0] => [1],
-			[0,1,0,1] => [1],
-			[0,1,1,0] => [1],
-			[0,1,1,1] => [1],
-			[1,0,0,0] => [1],
-			[1,0,0,1] => [1],
-			[1,0,1,0] => [1],
-			[1,0,1,1] => [1],
-			[1,1,0,0] => [1],
-			[1,1,0,1] => [1],
-			[1,1,1,0] => [1],
-			[1,1,1,1] => [1]
-		})
-	end
-	
-	def test_encoder8x3
-		s = Simulation.new()
-		c = Encoder8x3.new(s,"comp",nil)
-		help_test_logic_table(s,c,		
-			{
-			[0,0,0,0,0,0,0,0] => [0,0,0],  # hrm
-			[0,0,0,0,0,0,0,1] => [0,0,0],
-			[0,0,0,0,0,0,1,0] => [0,0,1],
-			[0,0,0,0,0,1,0,0] => [0,1,0],
-			[0,0,0,0,1,0,0,0] => [0,1,1],		
-			[0,0,0,1,0,0,0,0] => [1,0,0],
-			[0,0,1,0,0,0,0,0] => [1,0,1],
-			[0,1,0,0,0,0,0,0] => [1,1,0],
-			[1,0,0,0,0,0,0,0] => [1,1,1] 			
-			}
-		)
-		
-	end
-	
-	def test_computer		
-	end
-	
-	def teardown
-	end
+
 end

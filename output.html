@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/521/fabric.min.js"></script>
+</head>
+
+<body>
+    <canvas id="canvas" width="400" height="400" style="border:2px solid #000000"</canvas>
+    <script>
+		
+	
+        var canvas = new fabric.Canvas('canvas');
+		var text = new fabric.Textbox('A Register', {
+            
+            cursorColor: "blue",
+            top: 10,
+			left: 10,
+            //originX: "center",
+			//originY: "center",
+			fontSize: 25,
+        });
+		var rect = new fabric.Rect({ width: 180, height: 80, fill: '#f55', rx: 6, ry: 6 });
+		var g = new fabric.Group([rect, text]);
+		
+		
+		//canvas.add(text);		
+		canvas.add(g);
+		
+
+		
+    </script>
+	
+</body>
+
+</html>

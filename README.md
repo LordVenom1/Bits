@@ -37,6 +37,7 @@ Design Notes:
 Outcome:
 * The goals of the project are met.
 * I'd like to take it a little bit further to get a more complete instruction set and a more non-trivial program.
-* Performance is poor, but unfortunately the ruby profilers don't play well with Windows so my plan is to explore further on.
+* I'd also like to display the output more clearly to more clearly illustrate what's happening.
+* Performance is quite poor.  
 * This design is just one approach, I'd like to explore other approaches and have higher-level ways to specify logical components.  For example a way to hook up a range of inputs/outputs at once.
 

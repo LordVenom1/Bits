@@ -10,7 +10,7 @@ control_out = ["00000000"] * 1024
 		control_in[addr], control_out[addr] = "00100000", "00010000"
 	elsif addr % 16 == 1
 		# RAM TO IR, increment PC
-		control_in[addr], control_out[addr] = "00010100", "00000001"
+		control_in[addr], control_out[addr] = "00010100", "00001000"
 	end
 end
 
@@ -19,15 +19,11 @@ end
 
 # MAR TO IR HIGH
 
+# A, B, ALU, PC, RAM, none, none, SUB
 
-
-# PC to MAR,
-# MAR to IR HIGH
-# MAR TO IR LOW
-# 
 
 addr = ("000000" + "0010").to_i(2) # RESET
-control_in[addr], control_out[addr] = "11011010","00000001" ; addr += 1  # ram (0) to a, b, pc
+control_in[addr], control_out[addr] = "11011010","00001000" ; addr += 1  # ram (0) to a, b, pc
 
 #                                        read       write
 #                                        J          
@@ -35,25 +31,25 @@ control_in[addr], control_out[addr] = "11011010","00000001" ; addr += 1  # ram (
 #                                      ABP.....   AB......
 addr = ("000100" + "0010").to_i(2) # LDA [addr]
 control_in[addr], control_out[addr] = "00100000","00010000" ; addr += 1  # pc to mar
-control_in[addr], control_out[addr] = "00110000","00000001" ; addr += 1  # ram to mar pointer lookup
-control_in[addr], control_out[addr] = "10000010","00000001" ; addr += 1  # ram to a
+control_in[addr], control_out[addr] = "00110000","00001000" ; addr += 1  # ram to mar pointer lookup
+control_in[addr], control_out[addr] = "10000010","00001000" ; addr += 1  # ram to a
 
 #
 #                                        J          .
 #                                      ABMP....   AB......
 addr = ("000101" + "0010").to_i(2) # LDB [addr]
 control_in[addr], control_out[addr] = "00100000","00010000" ; addr += 1  # pc to mar
-control_in[addr], control_out[addr] = "00110000","00000001" ; addr += 1  # ram to mar pointer lookup
-control_in[addr], control_out[addr] = "01000010","00000001" ; addr += 1  # ram to b
+control_in[addr], control_out[addr] = "00110000","00001000" ; addr += 1  # ram to mar pointer lookup
+control_in[addr], control_out[addr] = "01000010","00001000" ; addr += 1  # ram to b
 
 #
 #                                        J          .
 #                                      ABMP....   AB......
 addr = ("100000" + "0010").to_i(2) # ADD
-control_in[addr], control_out[addr] = "10000010","00001000" ; addr += 1  # ALU TO A
+control_in[addr], control_out[addr] = "10000010","00100000" ; addr += 1  # ALU TO A
 
 addr = ("100001" + "0010").to_i(2) # SUB
-control_in[addr], control_out[addr] = "10000010","00001100" ; addr += 1  # ALU TO A w/ SUB
+control_in[addr], control_out[addr] = "10000010","00100001" ; addr += 1  # ALU TO A w/ SUB
 
 
 # OPCODE CNTR
