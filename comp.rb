@@ -11,21 +11,21 @@ class Computer1
 				
 		@bus = ComponentGroup.build_bus8x8(@sim)
 			@sim.show_gate_count("bus")		
-		@mar = ComponentGroup.build_register(@sim, 8)    # Memory Address Register
+		@mar = ComponentGroup.build_register_n(@sim, 8)    # Memory Address Register
 			@sim.show_gate_count("mar")
 		@ram = ComponentGroup.build_ram8x256(@sim, :high, program)       # Main Memory
 			@sim.show_gate_count("ram")
-		@pc = ComponentGroup.build_program_counter(@sim) # Program counter				
+		@pc = ComponentGroup.build_counter_n(@sim, 8) # Program counter				
 			@sim.show_gate_count("pc")
-		@a = ComponentGroup.build_register(@sim, 8)      # A register
+		@a = ComponentGroup.build_register_n(@sim, 8)      # A register
 			@sim.show_gate_count("a")
-		@b = ComponentGroup.build_register(@sim, 8)      # B register
+		@b = ComponentGroup.build_register_n(@sim, 8)      # B register
 			@sim.show_gate_count("b")
 		@alu = ComponentGroup.build_alu8(@sim)		     # ALU
 			@sim.show_gate_count("alu")
-		@ir = ComponentGroup.build_register(@sim, 6)     # instruction register
+		@ir = ComponentGroup.build_register_n(@sim, 6)     # instruction register
 			@sim.show_gate_count("ir")
-		@m_cntr = ComponentGroup.build_microcounter(@sim, :low) # Micro-instruction counter
+		@m_cntr = ComponentGroup.build_counter_register_n(@sim, 4, :low) # Micro-instruction counter
 			@sim.show_gate_count("micro counter")
 		# 6 inst, 4 cntr > 16 outputs		
 		microcode_in = File.readlines("computer1a.rom").collect do |l| l.strip end
@@ -114,7 +114,7 @@ class Computer1
 	end	
 	
 	def format_ir(ir)
-	+ reg_format(@ir)  +  " (" + case reg_format(@ir)
+		reg_format(@ir)  +  " (" + case reg_format(@ir)
 			when "000000"
 				"RESET"
 			when "000100"
@@ -136,7 +136,8 @@ class Computer1
 	
 	def display()		
 		
-		system("clear") || system("cls") 
+		system("clear") || system("cls")
+		puts 
 		puts "          C O M P U T E R       "
 		puts "=================================="
 		

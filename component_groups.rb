@@ -135,7 +135,7 @@ class ComponentGroup
 		cg
 	end
 	
-	def self.build_register(sim, n, on_clock = :high, initial_values = nil)
+	def self.build_register_n(sim, n, on_clock = :high, initial_values = nil)
 				
 		raise "invalid initial_data #{initial_values} / #{initial_values.size}" if initial_values and (initial_values.size != 8)
 	
@@ -271,31 +271,31 @@ class ComponentGroup
 		cg
 	end
 	
-	def self.build_fulladder8(sim)
-		cg = ComponentGroup.new(17,9) # addend 1, addend 2, carry-in > output 8 (MSB) , carry-out
+	def self.build_fulladder_n(sim, n = 8)
+		cg = ComponentGroup.new(n * 2 + 1,n + 1) # addend 1, addend 2, carry-in > output 8 (MSB) , carry-out
 
 		#internal components		
 		#idx = 0 (MSB)	
-		fas = Array.new(8) do |i|
+		fas = Array.new(n) do |i|
 			fa = ComponentGroup.build_fulladder(sim)
 		end
 				
 		
 		#internal wiring			
 		#connect carry-in to carry-out of previous adder		
-		(0...7).each do |idx|
+		(0...(n-1)).each do |idx|
 			fas[idx].set_aliased_input(2, *fas[idx+1].aliased_output(1))
 		end
 			
 		#external wiring
-		(0...8).each do |idx|
+		(0...n).each do |idx|
 			cg.alias_input(idx, *fas[idx].aliased_input(0))
-			cg.alias_input(idx+8, *fas[idx].aliased_input(1))
+			cg.alias_input(idx+n, *fas[idx].aliased_input(1))
 			cg.alias_output(idx, *fas[idx].aliased_output(0))			
 		end			
 		
-		cg.alias_input(16, *fas[7].aliased_input(2))
-		cg.alias_output(8, fas[0].aliased_output(1))
+		cg.alias_input(n*2, *fas[n-1].aliased_input(2))
+		cg.alias_output(n, fas[0].aliased_output(1))
 		
 		cg		
 	end
@@ -304,7 +304,7 @@ class ComponentGroup
 		cg = ComponentGroup.new(17,9) # addend 1, addend 2, sub? > output 8 (MSB) , carry-out
 	
 		#internal components	 
-		fa = ComponentGroup.build_fulladder8(sim)
+		fa = ComponentGroup.build_fulladder_n(sim, 8)
 		x = Array.new(8) do |g| sim.register_component(XorGate.new) end
 		b = sim.register_component(BufferGate.new)
 		
@@ -613,7 +613,7 @@ class ComponentGroup
 		addr2 = sim.register_component(BufferGate.new)
 		load = ComponentGroup.build_demux8(sim)		
 		r = Array.new(8) do |idx|			
-			ComponentGroup.build_register(sim, 8, on_clock, initial_data ? initial_data[idx] : nil)		
+			ComponentGroup.build_register_n(sim, 8, on_clock, initial_data ? initial_data[idx] : nil)		
 		end
 		m = Array.new(8) do ComponentGroup.build_mux8(sim) end
 		
@@ -788,77 +788,76 @@ class ComponentGroup
 		cg
 	end
 	
-	def self.build_program_counter(sim) 
-		cg = ComponentGroup.new(10,8)
+	def self.build_counter_n(sim, n = 8)
+		cg = ComponentGroup.new(n + 2, n)
 		
 		#internal components
-		r = ComponentGroup.build_register(sim, 8)
-		add = ComponentGroup.build_fulladder8(sim)
-		m = Array.new(8) do ComponentGroup.build_mux2(sim) end
+		r = ComponentGroup.build_register_n(sim, n)
+		add = ComponentGroup.build_fulladder_n(sim, n)
+		m = Array.new(n) do ComponentGroup.build_mux2(sim) end
 		inc = sim.register_component(BufferGate.new)
 		jmp = sim.register_component(BufferGate.new)
 		carryin = sim.register_component(OrGate.new)
 		
 		#internal wiring
-		(0...8).each do |idx|
+		(0...n).each do |idx|
 			m[idx].set_aliased_input(0, add.aliased_output(idx))
 			m[idx].set_aliased_input(2, jmp)						
 			r.set_aliased_input(idx, m[idx].aliased_output(0))
 			add.set_aliased_input(idx, r.aliased_output(idx))
-			add.set_aliased_input(8+idx, Simulation::FALSE)
+			add.set_aliased_input(n+idx, Simulation::FALSE)
 		end
-		r.set_aliased_input(8, inc)
+		r.set_aliased_input(n, inc)
 		carryin.set_input(0, inc)
 		carryin.set_input(1, jmp)
-		add.set_aliased_input(16, inc)
+		add.set_aliased_input(n*2, inc)
 		
 		#external wiring
-		(0...8).each do |idx|
+		(0...n).each do |idx|
 			cg.alias_input(idx, *m[idx].aliased_input(1))
 			cg.alias_output(idx, r.aliased_output(idx))
 		end
 		
-		cg.alias_input(8, inc, 0)
-		cg.alias_input(9, jmp, 0)
+		cg.alias_input(n, inc, 0)
+		cg.alias_input(n+1, jmp, 0)
 		
 		cg
 	end
 	
-	def self.build_microcounter(sim, on_clock = :high) 
-		cg = ComponentGroup.new(7,4) # jump, enable, zero
+	def self.build_counter_register_n(sim, n, on_clock = :high) 
+		cg = ComponentGroup.new(n+3,n) # jump, enable, zero
 		
 		#internal components		
 		jump = sim.register_component(BufferGate.new)
 		zero = sim.register_component(BufferGate.new)
-		r = ComponentGroup.build_register(sim, 4, on_clock)		
-		m = Array.new(4) do ComponentGroup.build_mux4(sim) end		
-		add = Array.new(4) do ComponentGroup.build_fulladder(sim) end
+		r = ComponentGroup.build_register_n(sim, n, on_clock)		
+		m = Array.new(n) do ComponentGroup.build_mux4(sim) end		
+		add = ComponentGroup.build_fulladder_n(sim, 4)
 				
 		#internal wiring
-		(0...4).each do |bi|			
-			m[bi].set_aliased_input(0, add[bi].aliased_output(0))
-			m[bi].set_aliased_input(2, Simulation::FALSE)
-			m[bi].set_aliased_input(3, Simulation::FALSE)			
-			m[bi].set_aliased_input(4, zero)
-			m[bi].set_aliased_input(5, jump)			
-						
-			add[bi].set_aliased_input(0, r.aliased_output(bi))
-			add[bi].set_aliased_input(1, Simulation::FALSE)
+		(0...n).each do |bit|			
+			m[bit].set_aliased_input(0, add.aliased_output(bit))
+			m[bit].set_aliased_input(2, Simulation::FALSE)
+			m[bit].set_aliased_input(3, Simulation::FALSE)			
+			m[bit].set_aliased_input(4, zero)
+			m[bit].set_aliased_input(5, jump)			
 			
-			r.set_aliased_input(bi, m[bi].aliased_output(0))
+			# add current value plus zero
+			add.set_aliased_input(bit, r.aliased_output(bit))
+			add.set_aliased_input(n + bit, Simulation::FALSE)
+			
+			r.set_aliased_input(bit, m[bit].aliased_output(0))
 		end		
-		(0...3).each do |bi|
-			add[bi].set_aliased_input(2, add[bi+1].aliased_output(1))
-		end
-		add[3].set_aliased_input(2, Simulation::TRUE)
+		
+		add.set_aliased_input(n*2, Simulation::TRUE) # carry in 1
 
 		#external wiring
-		cg.alias_input(4, jump, 0)
-		cg.alias_input(5, *r.aliased_input(4))
-		cg.alias_input(6, zero, 0)
-		(0...4).each do |bi|
-			cg.alias_input(bi, *m[bi].aliased_input(1))
-			cg.alias_output(bi, r.aliased_output(bi))
+		cg.alias_input(n, jump, 0)
+		cg.alias_input(n+1, *r.aliased_input(4))
+		cg.alias_input(n+2, zero, 0)
+		(0...n).each do |bit|
+			cg.alias_input(bit, *m[bit].aliased_input(1))
+			cg.alias_output(bit, r.aliased_output(bit))
 		end		
 		
 		cg
@@ -978,43 +977,55 @@ class ComponentGroup
 		cg
 	end
 
-	def self.build_microcode(sim, data_in, data_out) 
-		cg = ComponentGroup.new(10, 16)
+	def self.build_microcode(sim, inst_n, cntr_n, output_n, data_in, data_out) 
+		
+		raise "unsupported output_n #{output_n}" if output_n != 16
+		
+		cg = ComponentGroup.new(inst_n + cntr_n, output_n)
 		
 		#internal components
-		inst = ComponentGroup.build_bufferset(sim, 6)
-		cntr = ComponentGroup.build_bufferset(sim, 4)
-		rom_in = ComponentGroup.build_rom8x1024(sim, data_in) #10,8
-		rom_out = ComponentGroup.build_rom8x1024(sim, data_out) #10,8
+		inst = ComponentGroup.build_bufferset(sim, inst_n)
+		cntr = ComponentGroup.build_bufferset(sim, cntr_n)
+		
+		rom_in = nil
+		rom_out = nil
+		
+		case inst_n + cntr_n
+			when 4
+				rom_in = ComponentGroup.build_rom8x16(sim, data_in) #4,8
+				rom_out = ComponentGroup.build_rom8x16(sim, data_out) #4,8
+			when 8
+				rom_in = ComponentGroup.build_rom8x256(sim, data_in) #8,8
+				rom_out = ComponentGroup.build_rom8x256(sim, data_out) #8,8
+			when 10
+				rom_in = ComponentGroup.build_rom8x1024(sim, data_in) #10,8
+				rom_out = ComponentGroup.build_rom8x1024(sim, data_out) #10,8
+			else
+				raise "bit size #{inst_n} + #{cntr_n} not supported"
+		end
 		
 		#internal wiring
-		(0...6).each do |idx|
+		(0...inst_n).each do |idx|
 			rom_in.set_aliased_input(idx, inst.aliased_output(idx))
 			rom_out.set_aliased_input(idx, inst.aliased_output(idx))
 		end
-		(0...4).each do |idx|
-			rom_in.set_aliased_input(6 + idx, cntr.aliased_output(idx))
-			rom_out.set_aliased_input(6 + idx, cntr.aliased_output(idx))
+		(0...cntr_n).each do |idx|
+			rom_in.set_aliased_input(inst_n + idx, cntr.aliased_output(idx))
+			rom_out.set_aliased_input(inst_n + idx, cntr.aliased_output(idx))
 		end
 		
 		#external wiring
-		(0...6).each do |idx|
+		(0...inst_n).each do |idx|
 			cg.alias_input(idx, *inst.aliased_input(idx))
 		end		
-		(0...4).each do |idx|
-			cg.alias_input(6 + idx, *cntr.aliased_input(idx))
-		end		
+		(0...cntr_n).each do |idx|
+			cg.alias_input(inst_n + idx, *cntr.aliased_input(idx))
+		end
+		
 		(0...8).each do |idx|
 			cg.alias_output(idx, rom_in.aliased_output(idx))
 			cg.alias_output(8 + idx, rom_out.aliased_output(idx))			
 		end
-		
-		# cg.debug_override_input_values("0000100000")
-		# inst.display("inst")
-		# cntr.display("cntr")
-		# rom_in.display("rom_in")
-		# rom_out.display("rom_out")
-		# exit
 
 		cg
 	end

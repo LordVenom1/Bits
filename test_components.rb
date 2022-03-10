@@ -300,8 +300,8 @@ class TestSimple < Test::Unit::TestCase
 		)
 	end
 	
-	def test_fulladder8
-		comp = ComponentGroup.build_fulladder8(@sim)		
+	def test_fulladder_n
+		comp = ComponentGroup.build_fulladder_n(@sim, 8)
 		help_test_component_group_cases(comp,
 			{			
 			"00000000000000000" => "000000000",
@@ -562,7 +562,7 @@ class TestSimple < Test::Unit::TestCase
 	end
 	
 	def test_register8		
-		comp = ComponentGroup.build_register(@sim, 8)
+		comp = ComponentGroup.build_register_n(@sim, 8)
 		
 		help_test_component_group_case(comp,"111111110","00000000") # inpu1 doesn'1 do any1hing un1il load is se1
 		help_test_component_group_case(comp,"111111111","11111111") # load se1, ou1 should re0lec1 1he new value
@@ -709,8 +709,8 @@ class TestSimple < Test::Unit::TestCase
 		help_test_component_group_case(comp,"0010111111","10111111")
 	end
 	
-	def test_programcounter
-		comp = ComponentGroup.build_program_counter(@sim)
+	def test_counter
+		comp = ComponentGroup.build_counter_n(@sim, 8)
 		
 		help_test_component_group_case(comp, "0000000000","00000000")
 		help_test_component_group_case(comp, "0000000000","00000000")
@@ -722,7 +722,7 @@ class TestSimple < Test::Unit::TestCase
 	end
 	
 	def test_programcounterjump
-		comp = ComponentGroup.build_program_counter(@sim)
+		comp = ComponentGroup.build_counter_n(@sim, 8)
 		
 		help_test_component_group_case(comp, "0000000000","00000000")
 		help_test_component_group_case(comp, "0000000000","00000000")
@@ -738,7 +738,7 @@ class TestSimple < Test::Unit::TestCase
 	end
 	
 	def test_microcounter
-		comp = ComponentGroup.build_microcounter(@sim)
+		comp = ComponentGroup.build_counter_register_n(@sim, 4)
 		
 		#                           J E Z
 		help_test_component_group_case(comp,"0000000","0000")
@@ -752,7 +752,7 @@ class TestSimple < Test::Unit::TestCase
 	end
 	
 	def test_microcounterjump
-		comp = ComponentGroup.build_microcounter(@sim)
+		comp = ComponentGroup.build_counter_register_n(@sim, 4)
 		
 		#                           J E Z
 		help_test_component_group_case(comp,"0000000","0000")
@@ -764,7 +764,7 @@ class TestSimple < Test::Unit::TestCase
 	end
 	
 	def test_microcounterzero
-		comp = ComponentGroup.build_microcounter(@sim)
+		comp = ComponentGroup.build_counter_register_n(@sim, 4)
 		
 		#                           J E Z
 		help_test_component_group_case(comp,"0100000","0000")
