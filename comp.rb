@@ -30,7 +30,7 @@ class Computer1
 		# 6 inst, 4 cntr > 16 outputs		
 		microcode_in = File.readlines("computer1a.rom").collect do |l| l.strip end
 		microcode_out = File.readlines("computer1b.rom").collect do |l| l.strip end			
-		@m_inst = ComponentGroup.build_microcode(@sim,   # ROM that stores all the micro instruciton control flags 
+		@m_inst = ComponentGroup.build_microcode(@sim, 6,4,16,  # ROM that stores all the micro instruciton control flags 
 					microcode_in, microcode_out) 
 			@sim.show_gate_count("microcode")
 		

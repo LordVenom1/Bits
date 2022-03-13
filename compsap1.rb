@@ -11,6 +11,8 @@ class ComputerSAP1
 		@sim = Simulation.new()
 		
 		#internal components
+		@bus = ComponentGroup.build_bus8x8(@sim)
+		
 		
 		#internal wiring
 	end

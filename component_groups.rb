@@ -1,6 +1,5 @@
 class ComponentGroup	
 
-	
 	attr_reader :inputs, :outputs # for debug
 
 	def initialize(num_inputs, num_outputs)
@@ -9,6 +8,7 @@ class ComponentGroup
 	end
 	
 	def debug_override_input_values(inputs)
+		raise "bad override length #{inputs.size} != #{@inputs.size}"
 		inputs.split("").each_with_index do |i,n|			
 			gate = Simulation::FALSE if ["0","F"].include? i
 			gate = Simulation::TRUE if ["1","T"].include? i
@@ -18,17 +18,26 @@ class ComponentGroup
 	end
 	
 	def display(name)	
-		puts name			
+		puts name		
 		
-		puts "Inputs: " + (@inputs.collect do |i|			
-			i.first.inputs[i.last].output ? '1' : '0'			
+		puts "Inputs: " + (@inputs.collect.with_index do |i, idx|
+			begin
+				i.first.inputs[i.last].output ? '1' : '0'
+			rescue Exception => ex
+				raise "unable to display input #{idx}: " + ex.to_s
+			end
+			
 		end.join(""))
-		puts "Outputs: " + (@outputs.collect do |o|
-			o.output ? '1' : '0'
+		
+		puts "Outputs: " + (@outputs.collect do |o|			
+			begin
+				o.output ? '1' : '0'
+			rescue Exception => ex
+				raise "unable to display output #{idx}: " + ex.to_s
+			end
+			
 		end.join(""))
 	end
-	
-
 	
 	# remember the target internal component and an input number for input[n]
 	# later we can either set_aliased_input which will lookup this actual component and set that input to the given source output
@@ -454,6 +463,83 @@ class ComponentGroup
 		cg
 	end
 	
+	def self.build_and_n_gate(sim, n)
+		cg = ComponentGroup.new(n, 1)
+		
+		# internal components
+		gates = Array.new(n-1) do sim.register_component(AndGate.new) end
+		# internal wiring
+		(1...(gates.size)).each do |idx|
+			gates[idx].set_input(0, gates[idx - 1])
+		end
+		# external wiring
+		cg.alias_input(0, gates[0], 0)
+		(1...n).each do |idx|
+			cg.alias_input(idx, gates[idx - 1], 1)
+		end
+		cg.alias_output(0, gates.last)
+		
+		cg				
+	end
+	
+	def self.build_or_n_gate(sim, n)
+		cg = ComponentGroup.new(n, 1)
+		
+		# internal components
+		gates = Array.new(n-1) do sim.register_component(OrGate.new) end
+		# internal wiring
+		(1...(gates.size)).each do |idx|
+			gates[idx].set_input(0, gates[idx - 1])
+		end
+		# external wiring
+		cg.alias_input(0, gates[0], 0)
+		(1...n).each do |idx|
+			cg.alias_input(idx, gates[idx - 1], 1)
+		end
+		cg.alias_output(0, gates.last)
+		
+		cg				
+	end
+		
+	def self.build_mux_n(sim, data_n)		
+		
+		addr_n = Math.log(data_n, 2).to_i			
+		cg = ComponentGroup.new(data_n + addr_n, 1)
+				
+		#internal components
+		a = Array.new(data_n) do ComponentGroup.build_and_n_gate(sim, addr_n + 1) end		
+		o = ComponentGroup.build_or_n_gate(sim, data_n)
+		
+		addr = ComponentGroup.build_bufferset(sim, addr_n)		
+		addr_not = Array.new(addr_n) do sim.register_component(NotGate.new) end
+		
+		#internal wiring			
+		(0...addr_n).each do |idx|			
+			addr_not[idx].set_input(0, addr.aliased_output(idx))
+		end		
+		(0...data_n).each do |idx|					
+			idx.to_s(2).rjust(addr_n,'0').split("").each_with_index do |signal, ai|
+				if signal == '0'			
+					a[idx].set_aliased_input(1 + ai, addr_not[ai])
+				else										
+					a[idx].set_aliased_input(1 + ai, addr.aliased_output(ai))
+				end				
+			end	
+			o.set_aliased_input(idx, a[idx].aliased_output(0))
+		end
+						
+		#external wiring
+		(0...data_n).each do |idx|
+			cg.alias_input(idx, *a[idx].aliased_input(0))
+		end
+		(0...addr_n).each do |idx|
+			cg.alias_input(data_n + idx, *addr.aliased_input(idx))			
+		end
+		cg.alias_output(0, o.aliased_output(0))		
+				
+		cg
+	end
+	
 	def self.build_demux2(sim)
 		cg = ComponentGroup.new(2,2)
 		
@@ -863,9 +949,12 @@ class ComponentGroup
 		cg
 	end
 	
-	def self.build_rom8(sim, data)
-		cg = ComponentGroup.new(0,8)
-		(0...8).each do |idx|			
+	def self.build_rom_n(sim, n, data)
+		raise "bad data size #{n} != #{data.size}" unless data.size == n
+		
+		cg = ComponentGroup.new(0, n)
+		
+		(0...n).each do |idx|			
 			if ["T", "1"].include? data[idx]
 				cg.alias_output(idx, Simulation::TRUE)
 			elsif ["F", "0"].include? data[idx]
@@ -877,12 +966,47 @@ class ComponentGroup
 		cg
 	end
 	
+	# addr_n determines how many units we store
+	# output_n determines how wide each address is, likely 8-bit
+	def self.build_rom_n_m(sim, addr_n, output_n, data)
+		cg = ComponentGroup.new(addr_n, output_n)
+		data_n = addr_n ** 2
+		#internal components
+		# 0, n
+		addr = ComponentGroup.build_bufferset(sim, addr_n)
+		rom = Array.new( data_n ) do |idx| 	ComponentGroup.build_rom_n(sim,output_n,data[idx]) end
+		# output bits + ln bits, 1
+		mux = Array.new( output_n ) do ComponentGroup.build_mux_n(sim, data_n) end
+		
+		#internal wiring
+		(0...data_n).each do |di|
+			(0...output_n).each do |mi|
+				mux[mi].set_aliased_input(di, rom[di].aliased_output(mi))
+			end
+		end
+		(0...output_n).each do |mi|
+			(0...addr_n).each do |ai|
+				mux[mi].set_aliased_input(data_n + ai, addr.aliased_output(ai))
+			end
+		end
+		
+		#external wiring
+		(0...addr_n).each do |idx|
+			cg.alias_input(idx, *addr.aliased_input(idx))
+		end
+		(0...output_n).each do |idx|			
+			cg.alias_output(idx, mux[idx].aliased_output(0))
+		end
+		
+		cg
+	end
+	
 	def self.build_rom8x16(sim, data)
 		cg = ComponentGroup.new(4,8)
 		
 		#internal components
 		m = Array.new(8) do ComponentGroup.build_mux16(sim) end
-		rom = Array.new(16) do |idx| ComponentGroup.build_rom8(sim,data[idx]) end
+		rom = Array.new(16) do |idx| ComponentGroup.build_rom_n(sim,8,data[idx]) end
 		addr = ComponentGroup.build_bufferset(sim, 4)
 		
 		#internal wiring		

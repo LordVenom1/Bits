@@ -238,6 +238,70 @@ class TestSimple < Test::Unit::TestCase
 		})
 	end	
 	
+	def test_and_n
+		comp = ComponentGroup.build_and_n_gate(@sim, 5)
+		
+		help_test_component_group_cases(comp,
+		{
+			"00000" => "0",
+			"00001" => "0",
+			"00010" => "0",
+			"00011" => "0",
+			"00100" => "0",
+			"00101" => "0",
+			"00110" => "0",
+			"00111" => "0",
+			"01000" => "0",
+			"01001" => "0",
+			"01010" => "0",
+			"01011" => "0",
+			"01100" => "0",
+			"01101" => "0",
+			"01110" => "0",
+			"01111" => "0",
+			"10000" => "0",
+			"10001" => "0",
+			"10010" => "0",
+			"10011" => "0",
+			"10100" => "0",
+			"10101" => "0",
+			"10110" => "0",
+			"10111" => "0",
+			"11000" => "0",
+			"11001" => "0",
+			"11010" => "0",
+			"11011" => "0",
+			"11100" => "0",
+			"11101" => "0",
+			"11110" => "0",
+			"11111" => "1"			
+		})		
+	end
+	
+	def test_or_n
+		comp = ComponentGroup.build_or_n_gate(@sim, 4)
+		
+		help_test_component_group_cases(comp,
+		{
+			"0000" => "0",
+			"0001" => "1",
+			"0010" => "1",
+			"0011" => "1",
+			"0100" => "1",
+			"0101" => "1",
+			"0110" => "1",
+			"0111" => "1",
+			"1000" => "1",
+			"1001" => "1",
+			"1010" => "1",
+			"1011" => "1",
+			"1100" => "1",
+			"1101" => "1",
+			"1110" => "1",
+			"1111" => "1"		
+		})	
+	end
+	
 	def test_bufferset
 		comp = ComponentGroup.build_bufferset(@sim, 3)
 		
@@ -459,8 +523,95 @@ class TestSimple < Test::Unit::TestCase
 				"00000000010000001001" => "1",				
 				"00000000000000101110" => "1"
 			}
-		)		
-		
+		)				
+	end
+	
+	def test_mux_n_2
+		comp = ComponentGroup.build_mux_n(@sim, 2)
+		help_test_component_group_cases(comp,
+			{
+				"000" => "0",
+				"100" => "1",
+				"010" => "0",
+				"110" => "1",
+				"001" => "0",
+				"011" => "1",
+				"101" => "0",
+				"111" => "1"
+			}
+		)
+	end
+
+	def test_mux_n_4
+		comp = ComponentGroup.build_mux_n(@sim, 4)
+		help_test_component_group_cases(comp,
+			{
+				"000000" => "0",
+				"100000" => "1",
+				"010000" => "0",
+				"110000" => "1",
+				"001000" => "0",
+				"101000" => "1",
+				"011000" => "0",
+				"111000" => "1",
+				"000100" => "0",
+				"100100" => "1",
+				"010100" => "0",
+				"110100" => "1",
+				"001100" => "0",
+				"101100" => "1",
+				"011100" => "0",
+				"111100" => "1",	
+				"000001" => "0",
+				"100001" => "0",
+				"010001" => "1",
+				"110001" => "1",
+				"001001" => "0",
+				"101001" => "0",
+				"011001" => "1",
+				"111001" => "1",
+				"000101" => "0",
+				"100101" => "0",
+				"010101" => "1",
+				"110101" => "1",
+				"001101" => "0",
+				"101101" => "0",
+				"011101" => "1",
+				"111101" => "1",				
+				"000010" => "0",
+				"100010" => "0",
+				"010010" => "0",
+				"110010" => "0",
+				"001010" => "1",
+				"101010" => "1",
+				"011010" => "1",
+				"111010" => "1",
+				"000110" => "0",
+				"100110" => "0",
+				"010110" => "0",
+				"110110" => "0",
+				"001110" => "1",
+				"101110" => "1",
+				"011110" => "1",
+				"111110" => "1",		
+				"000011" => "0",
+				"100011" => "0",
+				"010011" => "0",
+				"110011" => "0",
+				"001011" => "0",
+				"101011" => "0",
+				"011011" => "0",
+				"111011" => "0",
+				"000111" => "1",
+				"100111" => "1",
+				"010111" => "1",
+				"110111" => "1",
+				"001111" => "1",
+				"101111" => "1",
+				"011111" => "1",
+				"111111" => "1"					
+			}
+		)
 	end
 	
 	def test_demux2
@@ -668,6 +819,62 @@ class TestSimple < Test::Unit::TestCase
 		help_test_component_group_case(comp,"1000011000101111111","10000110")
 	end
 	
+	def test_rom_n_2x3
+		addr_n = 2
+		data_n = addr_n ** 2
+		output_n = 3
+		data = File.readlines("util/debug1024.txt").first(data_n).collect do |line| line.strip[-output_n..-1] end
+		comp = ComponentGroup.build_rom_n_m(@sim, addr_n, output_n, data)
+		
+		help_test_component_group_case(comp, "00", "000")
+		help_test_component_group_case(comp, "01", "010")
+		help_test_component_group_case(comp, "10", "101")
+		help_test_component_group_case(comp, "11", "011")
+	end
+	
+	def test_rom_n_4x3
+		
+		addr_n = 4
+		data_n = addr_n ** 2
+		output_n = 3
+		data = File.readlines("util/debug1024.txt").first(data_n).collect do |line| line.strip[-output_n..-1] end
+		comp = ComponentGroup.build_rom_n_m(@sim, addr_n, output_n, data)
+		
+		help_test_component_group_case(comp, "0000", "000")
+		help_test_component_group_case(comp, "0001", "001")
+		help_test_component_group_case(comp, "0010", "010")
+		help_test_component_group_case(comp, "0011", "011")
+		help_test_component_group_case(comp, "1100", "100")
+		help_test_component_group_case(comp, "1101", "101")
+		help_test_component_group_case(comp, "1110", "110")
+		help_test_component_group_case(comp, "1111", "111")		
+		help_test_component_group_case(comp, "1000", "000")
+		help_test_component_group_case(comp, "1001", "001")
+		help_test_component_group_case(comp, "1010", "010")
+		help_test_component_group_case(comp, "1011", "011")		
+	end
+	
+	def test_rom_n_4x5
+		addr_n = 4
+		data_n = addr_n ** 2
+		output_n = 5
+		data = File.readlines("util/debug1024.txt").first(data_n).collect do |line| line.strip[-output_n..-1] end
+		comp = ComponentGroup.build_rom_n_m(@sim, addr_n, output_n, data)
+		
+		help_test_component_group_case(comp, "0000", "00000")
+		help_test_component_group_case(comp, "0001", "00001")
+		help_test_component_group_case(comp, "0010", "00010")
+		help_test_component_group_case(comp, "0011", "00011")
+		help_test_component_group_case(comp, "1100", "01100")
+		help_test_component_group_case(comp, "1101", "01101")
+		help_test_component_group_case(comp, "1110", "01110")
+		help_test_component_group_case(comp, "1111", "01111")		
+		help_test_component_group_case(comp, "1000", "01000")
+		help_test_component_group_case(comp, "1001", "01001")
+		help_test_component_group_case(comp, "1010", "01010")
+		help_test_component_group_case(comp, "1011", "01011")		
+	end	
+	
 	def test_rom8x16
 		data = File.readlines("util/debug1024.txt").first(16).collect do |line| line.strip end
 		comp = ComponentGroup.build_rom8x16(@sim,data)
@@ -780,7 +987,7 @@ class TestSimple < Test::Unit::TestCase
 		data_in = File.readlines("computer1a.rom").collect do |l| l.strip end
 		data_out = File.readlines("computer1b.rom").collect do |l| l.strip end
 	
-		comp = ComponentGroup.build_microcode(@sim, data_in, data_out)
+		comp = ComponentGroup.build_microcode(@sim, 6,4,16,data_in, data_out)
 	
 		# no real tests to be done, but exercise the component
 		help_test_component_group_set_inputs(comp, "0000100000")
