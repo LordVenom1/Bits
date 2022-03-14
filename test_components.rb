@@ -672,6 +672,34 @@ class TestSimple < Test::Unit::TestCase
 		)
 	end
 	
+	def test_demux_n_2
+		comp = ComponentGroup.build_demux_n(@sim, 2)
+		help_test_component_group_cases(comp,
+			{
+				"00" => "00",
+				"10" => "10",
+				"01" => "00",
+				"11" => "01"
+			}
+		)
+	end
+	
+	def test_demux_n_8
+		comp = ComponentGroup.build_demux_n(@sim, 8)		
+		help_test_component_group_cases(comp,
+			{
+				"0000" => "00000000",
+				"0101" => "00000000",
+				"1000" => "10000000", 
+				"1001" => "01000000", 
+				"1100" => "00001000", 
+				"1101" => "00000100", 
+				"1110" => "00000010",
+				"1111" => "00000001"  
+			}
+		)
+	end
+	
 	def test_bus8x8
 		comp = ComponentGroup.build_bus8x8(@sim)
 
@@ -819,16 +847,37 @@ class TestSimple < Test::Unit::TestCase
 		help_test_component_group_case(comp,"1000011000101111111","10000110")
 	end
 	
+	def test_ram_n_m_8_8
+		comp = ComponentGroup.build_ram_n_m(@sim, 8, 8)#    ADRL				
+		help_test_component_group_case(comp,"000000000000","00000000") # sanity check
+		help_test_component_group_case(comp,"000000010001","00000001") # load 1 into addr 0
+		help_test_component_group_case(comp,"010101010100","00000000") # verify addr 2 is empty
+		help_test_component_group_case(comp,"000000010000","00000001") # verify 1 still in addr 0 
+		help_test_component_group_case(comp,"010101010101","01010101") # load num into addr 2
+		help_test_component_group_case(comp,"000011011011","00001101") # load num into addr 5
+		help_test_component_group_case(comp,"000101101101","00010110") # load num into addr 6
+		help_test_component_group_case(comp,"001001111111","00100111") # load num into addr 7		
+	end 
+	
+		
+	def test_ram_n_m_2_3
+		comp = ComponentGroup.build_ram_n_m(@sim, 3, 2)#    ADRL				
+		help_test_component_group_case(comp,"00000","000") # sanity check
+		help_test_component_group_case(comp,"00101","001") # load 1 into addr 0
+		help_test_component_group_case(comp,"00100","001") # verify addr 2 is empty
+		help_test_component_group_case(comp,"01011","010") # verify 1 still in addr 0 
+	end 
+	
 	def test_rom_n_2x3
 		addr_n = 2
 		data_n = addr_n ** 2
-		output_n = 3
-		data = File.readlines("util/debug1024.txt").first(data_n).collect do |line| line.strip[-output_n..-1] end
-		comp = ComponentGroup.build_rom_n_m(@sim, addr_n, output_n, data)
+		width_n = 3
+		data = File.readlines("util/debug1024.txt").first(data_n).collect do |line| line.strip[-width_n..-1] end
+		comp = ComponentGroup.build_rom_n_m(@sim, width_n, data_n, data)
 		
 		help_test_component_group_case(comp, "00", "000")
-		help_test_component_group_case(comp, "01", "010")
-		help_test_component_group_case(comp, "10", "101")
+		help_test_component_group_case(comp, "01", "001")
+		help_test_component_group_case(comp, "10", "010")
 		help_test_component_group_case(comp, "11", "011")
 	end
 	
@@ -836,9 +885,9 @@ class TestSimple < Test::Unit::TestCase
 		
 		addr_n = 4
 		data_n = addr_n ** 2
-		output_n = 3
-		data = File.readlines("util/debug1024.txt").first(data_n).collect do |line| line.strip[-output_n..-1] end
-		comp = ComponentGroup.build_rom_n_m(@sim, addr_n, output_n, data)
+		width_n = 3
+		data = File.readlines("util/debug1024.txt").first(data_n).collect do |line| line.strip[-width_n..-1] end
+		comp = ComponentGroup.build_rom_n_m(@sim, width_n, data_n, data)
 		
 		help_test_component_group_case(comp, "0000", "000")
 		help_test_component_group_case(comp, "0001", "001")
@@ -857,9 +906,9 @@ class TestSimple < Test::Unit::TestCase
 	def test_rom_n_4x5
 		addr_n = 4
 		data_n = addr_n ** 2
-		output_n = 5
-		data = File.readlines("util/debug1024.txt").first(data_n).collect do |line| line.strip[-output_n..-1] end
-		comp = ComponentGroup.build_rom_n_m(@sim, addr_n, output_n, data)
+		width_n = 5
+		data = File.readlines("util/debug1024.txt").first(data_n).collect do |line| line.strip[-width_n..-1] end
+		comp = ComponentGroup.build_rom_n_m(@sim, width_n, data_n, data)
 		
 		help_test_component_group_case(comp, "0000", "00000")
 		help_test_component_group_case(comp, "0001", "00001")

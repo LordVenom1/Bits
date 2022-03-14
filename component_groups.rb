@@ -146,7 +146,7 @@ class ComponentGroup
 	
 	def self.build_register_n(sim, n, on_clock = :high, initial_values = nil)
 				
-		raise "invalid initial_data #{initial_values} / #{initial_values.size}" if initial_values and (initial_values.size != 8)
+		raise "invalid initial_data #{initial_values} / #{initial_values.size}" if initial_values and (initial_values.size != n)
 	
 		cg = ComponentGroup.new(n + 1,n)
 		
@@ -663,6 +663,45 @@ class ComponentGroup
 		cg
 	end
 	
+	def self.build_demux_n(sim, data_n)		
+		
+		addr_n = Math.log(data_n, 2).to_i			
+		cg = ComponentGroup.new(1 + addr_n, data_n)
+				
+		#internal components
+		a = Array.new(data_n) do ComponentGroup.build_and_n_gate(sim, addr_n + 1) end				
+		
+		d = sim.register_component(BufferGate.new)
+		addr = ComponentGroup.build_bufferset(sim, addr_n)	
+		addr_not = Array.new(addr_n) do sim.register_component(NotGate.new) end
+		
+		#internal wiring			
+		(0...addr_n).each do |idx|			
+			addr_not[idx].set_input(0, addr.aliased_output(idx))
+		end		
+		(0...data_n).each do |idx|
+			a[idx].set_aliased_input(0, d)
+			idx.to_s(2).rjust(addr_n,'0').split("").each_with_index do |signal, ai|
+				if signal == '0'			
+					a[idx].set_aliased_input(1 + ai, addr_not[ai])
+				else										
+					a[idx].set_aliased_input(1 + ai, addr.aliased_output(ai))
+				end				
+			end				
+		end
+						
+		#external wiring
+		(0...data_n).each do |idx|			
+			cg.alias_output(idx, *a[idx].aliased_output(0))
+		end
+		cg.alias_input(0, d, 0)
+		(0...addr_n).each do |idx|
+			cg.alias_input(1 + idx, *addr.aliased_input(idx))			
+		end		
+		
+		cg
+	end
+	
 	def self.build_bus8x8(sim) 
 		cg = ComponentGroup.new(72,8)
 				
@@ -682,9 +721,7 @@ class ComponentGroup
 			end
 			cg.alias_input(64 + idx, *enc.aliased_input(idx))
 			cg.alias_output(idx, m[idx].aliased_output(0))
-		end
-		
-		$debug = {bus: [enc, m]}
+		end		
 		
 		cg
 	end
@@ -874,6 +911,50 @@ class ComponentGroup
 		cg
 	end
 	
+	def self.build_ram_n_m(sim, width_n, height_n, on_clock = :high, initial_data = nil) #data 8 MSB, 3 addr MSB, 1 load
+		addr_n = Math::log(height_n,2).to_i
+		cg = ComponentGroup.new(width_n + addr_n + 1, width_n)
+		
+		#internal components				
+		addr = ComponentGroup.build_bufferset(sim, addr_n)
+		
+		load = ComponentGroup.build_demux_n(sim, height_n)
+		r = Array.new(height_n) do |idx|			
+			ComponentGroup.build_register_n(sim, width_n, on_clock, initial_data ? initial_data[idx] : nil)		
+		end
+		dem_in = Array.new(width_n) do ComponentGroup.build_demux_n(sim, height_n) end
+		mux_out = Array.new(width_n) do ComponentGroup.build_mux_n(sim, height_n) end
+		
+		#internal wiring
+		(0...addr_n).each do |ai|
+			(0...width_n).each do |bit|
+				dem_in[bit].set_aliased_input(1 + ai, addr.aliased_output(ai))
+				mux_out[bit].set_aliased_input(height_n + ai, addr.aliased_output(ai))
+			end
+			load.set_aliased_input(1 + ai, addr.aliased_output(ai))
+		end
+		(0...height_n).each do |idx|					
+			(0...width_n).each do |bit|
+				mux_out[bit].set_aliased_input(idx, r[idx].aliased_output(bit))				
+				r[idx].set_aliased_input(bit, dem_in[bit].aliased_output(idx))
+			end		
+			r[idx].set_aliased_input(width_n,  load.aliased_output(idx))
+		end	
+		
+		#external wiring
+		(0...width_n).each do |idx|
+			cg.alias_input(idx, *dem_in[idx].aliased_input(0))
+			cg.alias_output(idx, mux_out[idx].aliased_output(0))			
+		end
+		(0...addr_n).each do |ai|
+			cg.alias_input(width_n + ai, *addr.aliased_input(ai))
+		end
+
+		cg.alias_input(width_n + addr_n + 0, *load.aliased_input(0))		
+				
+		cg
+	end
+	
 	def self.build_counter_n(sim, n = 8)
 		cg = ComponentGroup.new(n + 2, n)
 		
@@ -918,7 +999,7 @@ class ComponentGroup
 		zero = sim.register_component(BufferGate.new)
 		r = ComponentGroup.build_register_n(sim, n, on_clock)		
 		m = Array.new(n) do ComponentGroup.build_mux4(sim) end		
-		add = ComponentGroup.build_fulladder_n(sim, 4)
+		add = ComponentGroup.build_fulladder_n(sim, n)
 				
 		#internal wiring
 		(0...n).each do |bit|			
@@ -939,7 +1020,7 @@ class ComponentGroup
 
 		#external wiring
 		cg.alias_input(n, jump, 0)
-		cg.alias_input(n+1, *r.aliased_input(4))
+		cg.alias_input(n+1, *r.aliased_input(n))
 		cg.alias_input(n+2, zero, 0)
 		(0...n).each do |bit|
 			cg.alias_input(bit, *m[bit].aliased_input(1))
@@ -966,27 +1047,29 @@ class ComponentGroup
 		cg
 	end
 	
-	# addr_n determines how many units we store
-	# output_n determines how wide each address is, likely 8-bit
-	def self.build_rom_n_m(sim, addr_n, output_n, data)
-		cg = ComponentGroup.new(addr_n, output_n)
-		data_n = addr_n ** 2
+	# width_n determines how wide each unit is, likely 8-bit
+	# height_n determines how many units we store
+	def self.build_rom_n_m(sim, width_n, height_n, data)
+	
+		addr_n = Math::log(height_n,2).to_i
+	
+		cg = ComponentGroup.new(addr_n, width_n)		
 		#internal components
 		# 0, n
 		addr = ComponentGroup.build_bufferset(sim, addr_n)
-		rom = Array.new( data_n ) do |idx| 	ComponentGroup.build_rom_n(sim,output_n,data[idx]) end
+		rom = Array.new( height_n ) do |idx| 	ComponentGroup.build_rom_n(sim,width_n,data[idx]) end
 		# output bits + ln bits, 1
-		mux = Array.new( output_n ) do ComponentGroup.build_mux_n(sim, data_n) end
+		mux = Array.new( width_n ) do ComponentGroup.build_mux_n(sim, height_n) end
 		
 		#internal wiring
-		(0...data_n).each do |di|
-			(0...output_n).each do |mi|
+		(0...height_n).each do |di|
+			(0...width_n).each do |mi|
 				mux[mi].set_aliased_input(di, rom[di].aliased_output(mi))
 			end
 		end
-		(0...output_n).each do |mi|
+		(0...width_n).each do |mi|
 			(0...addr_n).each do |ai|
-				mux[mi].set_aliased_input(data_n + ai, addr.aliased_output(ai))
+				mux[mi].set_aliased_input(height_n + ai, addr.aliased_output(ai))
 			end
 		end
 		
@@ -994,7 +1077,7 @@ class ComponentGroup
 		(0...addr_n).each do |idx|
 			cg.alias_input(idx, *addr.aliased_input(idx))
 		end
-		(0...output_n).each do |idx|			
+		(0...width_n).each do |idx|			
 			cg.alias_output(idx, mux[idx].aliased_output(0))
 		end
 		
@@ -1101,11 +1184,11 @@ class ComponentGroup
 		cg
 	end
 
-	def self.build_microcode(sim, inst_n, cntr_n, output_n, data_in, data_out) 
+	def self.build_microcode(sim, inst_n, cntr_n, width_n, data_in, data_out) 
 		
-		raise "unsupported output_n #{output_n}" if output_n != 16
+		# raise "unsupported width_n #{width_n}" if width_n != 16
 		
-		cg = ComponentGroup.new(inst_n + cntr_n, output_n)
+		cg = ComponentGroup.new(inst_n + cntr_n, width_n)
 		
 		#internal components
 		inst = ComponentGroup.build_bufferset(sim, inst_n)

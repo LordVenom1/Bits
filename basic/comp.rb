@@ -1,4 +1,4 @@
-require_relative 'simulation.rb'
+require_relative '../simulation.rb'
 
 $stdout.sync = true
 
@@ -10,29 +10,29 @@ class Computer1
 		#internal components		
 				
 		@bus = ComponentGroup.build_bus8x8(@sim)
-			@sim.show_gate_count("bus")		
+			# @sim.show_gate_count("bus")		
 		@mar = ComponentGroup.build_register_n(@sim, 8)    # Memory Address Register
-			@sim.show_gate_count("mar")
+			# @sim.show_gate_count("mar")
 		@ram = ComponentGroup.build_ram8x256(@sim, :high, program)       # Main Memory
-			@sim.show_gate_count("ram")
+			# @sim.show_gate_count("ram")
 		@pc = ComponentGroup.build_counter_n(@sim, 8) # Program counter				
-			@sim.show_gate_count("pc")
+			# @sim.show_gate_count("pc")
 		@a = ComponentGroup.build_register_n(@sim, 8)      # A register
-			@sim.show_gate_count("a")
+			# @sim.show_gate_count("a")
 		@b = ComponentGroup.build_register_n(@sim, 8)      # B register
-			@sim.show_gate_count("b")
+			# @sim.show_gate_count("b")
 		@alu = ComponentGroup.build_alu8(@sim)		     # ALU
-			@sim.show_gate_count("alu")
+			# @sim.show_gate_count("alu")
 		@ir = ComponentGroup.build_register_n(@sim, 6)     # instruction register
-			@sim.show_gate_count("ir")
+			# @sim.show_gate_count("ir")
 		@m_cntr = ComponentGroup.build_counter_register_n(@sim, 4, :low) # Micro-instruction counter
-			@sim.show_gate_count("micro counter")
+			# @sim.show_gate_count("micro counter")
 		# 6 inst, 4 cntr > 16 outputs		
 		microcode_in = File.readlines("computer1a.rom").collect do |l| l.strip end
 		microcode_out = File.readlines("computer1b.rom").collect do |l| l.strip end			
 		@m_inst = ComponentGroup.build_microcode(@sim, 6,4,16,  # ROM that stores all the micro instruciton control flags 
 					microcode_in, microcode_out) 
-			@sim.show_gate_count("microcode")
+			# @sim.show_gate_count("microcode")
 		
 		#internal wiring
 		(0...6).each do |idx| 
@@ -80,6 +80,10 @@ class Computer1
 		
 		# connect components to input registers from bus.. 
 		# doens't do anything unless these components have their load signals set
+		
+		#cp    ep    lm    ce    li    e1     la      ea      su      eu      lb    lo
+		
+		
 		(0...8).each do |idx| 
 			@ram.set_aliased_input(idx, @bus.aliased_output(idx))
 			@a.set_aliased_input(idx, @bus.aliased_output(idx))
@@ -98,10 +102,12 @@ class Computer1
 		@ir.set_aliased_input(6,@m_inst.aliased_output(5)) # ir read from bus flag
 		@mar.set_aliased_input(8, @m_inst.aliased_output(2)) # mar read from bus flag
 		
+		
+		
 		#external wiring
 		
-		puts "Computer setup complete.  Press return to start processing."
-		s = STDIN.gets
+		# puts "Computer setup complete.  Press return to start processing."
+		# s = STDIN.gets
 		
 	end
 	
