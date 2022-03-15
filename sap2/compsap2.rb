@@ -11,10 +11,10 @@ class ComputerSAP2
 		@sim = Simulation.new()
 		
 		#internal components
-		@bus = ComponentGroup.build_bus8x8(@sim)
+		@bus = ComponentGroup.build_bus8x16(@sim)
 		@mar = ComponentGroup.build_register_n(@sim, 4)
 		@ram = ComponentGroup.build_ram_n_m(@sim, 8, 16, :high, program)
-		@pc = ComponentGroup.build_counter_n(@sim, 4)
+		@pc = ComponentGroup.build_counter_n(@sim, 16)
 		
 		@a = ComponentGroup.build_register_n(@sim, 8)
 		@b = ComponentGroup.build_register_n(@sim, 8)
@@ -30,36 +30,36 @@ class ComputerSAP2
 		
 		#internal wiring		
 		# setup bus "outputs": determine which component gets to write to the bus on this cycle
-		(0...8).each do |idx| @bus.set_aliased_input(0  + idx, idx < 4 ? @pc.aliased_output(idx) : Simulation::FALSE) end				
-		(0...8).each do |idx| @bus.set_aliased_input(8  + idx, @ram.aliased_output(idx)) end
-		(0...8).each do |idx| @bus.set_aliased_input(16 + idx, idx < 4 ? @ir.aliased_output(idx + 4) : Simulation::FALSE) end
-		(0...8).each do |idx| @bus.set_aliased_input(24 + idx, @a.aliased_output(idx)) end
-		(0...8).each do |idx| @bus.set_aliased_input(32 + idx, @alu.aliased_output(idx)) end
-		(0...8).each do |idx| @bus.set_aliased_input(40 + idx, Simulation::FALSE) end
-		(0...8).each do |idx| @bus.set_aliased_input(48 + idx, Simulation::FALSE) end
-		(0...8).each do |idx| @bus.set_aliased_input(56 + idx, Simulation::FALSE) end	
+		(0...16).each do |idx| @bus.set_aliased_input(0 + idx, @pc.aliased_output(idx)) end				
+		(0...8).each do |idx| @bus.set_aliased_input(16 + 8 + idx, @ram.aliased_output(idx)) end
+		(0...8).each do |idx| @bus.set_aliased_input(32 + 12 + idx, idx < 4 ? @ir.aliased_output(idx + 4) : Simulation::FALSE) end
+		(0...8).each do |idx| @bus.set_aliased_input(48 + 8 + idx, @a.aliased_output(idx)) end
+		(0...8).each do |idx| @bus.set_aliased_input(64 + 8 + idx, @alu.aliased_output(idx)) end
+		(0...8).each do |idx| @bus.set_aliased_input(80 + 8 + idx,  Simulation::FALSE) end
+		(0...8).each do |idx| @bus.set_aliased_input(96 + 8 + idx,  Simulation::FALSE) end
+		(0...8).each do |idx| @bus.set_aliased_input(112 + 8 + idx, Simulation::FALSE) end	
 
-		@bus.set_aliased_input(64 + 0, @m_inst.aliased_output(1)) # pc write to bus
-		@bus.set_aliased_input(64 + 1, @m_inst.aliased_output(3)) # ram write to bus
-		@bus.set_aliased_input(64 + 2, @m_inst.aliased_output(5)) # ir write to bus
-		@bus.set_aliased_input(64 + 3, @m_inst.aliased_output(7)) # a write to bus
-		@bus.set_aliased_input(64 + 4, @m_inst.aliased_output(9)) # alu write to bus		
-		@bus.set_aliased_input(64 + 5, Simulation::FALSE) #unused
-		@bus.set_aliased_input(64 + 6, Simulation::FALSE) #unused
-		@bus.set_aliased_input(64 + 7, Simulation::FALSE) #unused		
+		@bus.set_aliased_input(128 + 0, @m_inst.aliased_output(1)) # pc write to bus
+		@bus.set_aliased_input(128 + 1, @m_inst.aliased_output(3)) # ram write to bus
+		@bus.set_aliased_input(128 + 2, @m_inst.aliased_output(5)) # ir write to bus
+		@bus.set_aliased_input(128 + 3, @m_inst.aliased_output(7)) # a write to bus
+		@bus.set_aliased_input(128 + 4, @m_inst.aliased_output(9)) # alu write to bus		
+		@bus.set_aliased_input(128 + 5, Simulation::FALSE) #unused
+		@bus.set_aliased_input(128 + 6, Simulation::FALSE) #unused
+		@bus.set_aliased_input(128 + 7, Simulation::FALSE) #unused		
 		
 		# connect components to input registers from bus. 
 		# doesn't do anything unless these components have their load signals set
 		(0...8).each do |idx| 			
-			@a.set_aliased_input(idx, @bus.aliased_output(idx))
-			@b.set_aliased_input(idx, @bus.aliased_output(idx))
-			@out.set_aliased_input(idx, @bus.aliased_output(idx))
-			@ir.set_aliased_input(idx, @bus.aliased_output(idx))				
-			@mar.set_aliased_input(idx, @bus.aliased_output(idx)) if idx < 4
+			@a.set_aliased_input(idx, @bus.aliased_output(8 + idx))
+			@b.set_aliased_input(idx, @bus.aliased_output(8 + idx))
+			@out.set_aliased_input(idx, @bus.aliased_output(8 + idx))
+			@ir.set_aliased_input(idx, @bus.aliased_output(8 + idx))				
+			@mar.set_aliased_input(idx, @bus.aliased_output(12 + idx)) if idx < 4
 		end		
 		
 		# set control signals
-		@pc.set_aliased_input(4, @m_inst.aliased_output(0))   # pc increment
+		@pc.set_aliased_input(16, @m_inst.aliased_output(0))   # pc increment
 		@mar.set_aliased_input(4, @m_inst.aliased_output(2))  # mar load from bus
 		@ir.set_aliased_input(8, @m_inst.aliased_output(4))   # ir load from bus
 		@a.set_aliased_input(8, @m_inst.aliased_output(6))    # a load from bus
@@ -68,10 +68,10 @@ class ComputerSAP2
 		@out.set_aliased_input(8, @m_inst.aliased_output(11)) # out load from bus
 		
 		# wire pc jump to false
-		(0...4).each do |idx|
+		(0...16).each do |idx|
 			@pc.set_aliased_input(idx, Simulation::FALSE)
 		end
-		@pc.set_aliased_input(5, Simulation::FALSE)
+		@pc.set_aliased_input(17, Simulation::FALSE)
 		
 		# mc early reset, described on pg 163
 		@mc_reset_not = ComponentGroup.build_or_n_gate(@sim, 12)
