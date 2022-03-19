@@ -12,12 +12,14 @@ class ComputerSAP2
 		
 		#internal components
 		@bus = ComponentGroup.build_bus8x16(@sim)
-		@mar = ComponentGroup.build_register_n(@sim, 4)
-		@ram = ComponentGroup.build_ram_n_m(@sim, 8, 16, :high, program)
+		@mar = ComponentGroup.build_register_n(@sim, 16)
+		@ram = ComponentGroup.build_ram_n_m(@sim, 16, 16, :high, program)
 		@pc = ComponentGroup.build_counter_n(@sim, 16)
 		
 		@a = ComponentGroup.build_register_n(@sim, 8)
 		@b = ComponentGroup.build_register_n(@sim, 8)
+		@c = ComponentGroup.build_register_n(@sim, 8)
+		@tmp = ComponentGroup.build_register_n(@sim, 8)
 		@alu = ComponentGroup.build_alu8(@sim)
 		@out = ComponentGroup.build_register_n(@sim, 8)		
 		@ir = ComponentGroup.build_register_n(@sim, 8)
@@ -31,7 +33,7 @@ class ComputerSAP2
 		#internal wiring		
 		# setup bus "outputs": determine which component gets to write to the bus on this cycle
 		(0...16).each do |idx| @bus.set_aliased_input(0 + idx, @pc.aliased_output(idx)) end				
-		(0...8).each do |idx| @bus.set_aliased_input(16 + 8 + idx, @ram.aliased_output(idx)) end
+		(0...16).each do |idx| @bus.set_aliased_input(16 + idx, @ram.aliased_output(idx)) end
 		(0...8).each do |idx| @bus.set_aliased_input(32 + 12 + idx, idx < 4 ? @ir.aliased_output(idx + 4) : Simulation::FALSE) end
 		(0...8).each do |idx| @bus.set_aliased_input(48 + 8 + idx, @a.aliased_output(idx)) end
 		(0...8).each do |idx| @bus.set_aliased_input(64 + 8 + idx, @alu.aliased_output(idx)) end
@@ -53,10 +55,14 @@ class ComputerSAP2
 		(0...8).each do |idx| 			
 			@a.set_aliased_input(idx, @bus.aliased_output(8 + idx))
 			@b.set_aliased_input(idx, @bus.aliased_output(8 + idx))
+			@c.set_aliased_input(idx, @bus.aliased_output(8 + idx))
+			@tmp.set_aliased_input(idx, @bus.aliased_output(8 + idx))
 			@out.set_aliased_input(idx, @bus.aliased_output(8 + idx))
-			@ir.set_aliased_input(idx, @bus.aliased_output(8 + idx))				
-			@mar.set_aliased_input(idx, @bus.aliased_output(12 + idx)) if idx < 4
+			@ir.set_aliased_input(idx, @bus.aliased_output(8 + idx))							
 		end		
+		(0...16).each do |idx|
+			@mar.set_aliased_input(idx, @bus.aliased_output(idx))
+		end
 		
 		# set control signals
 		@pc.set_aliased_input(16, @m_inst.aliased_output(0))   # pc increment
@@ -66,6 +72,8 @@ class ComputerSAP2
 		@alu.set_aliased_input(16, @m_inst.aliased_output(8)) # subtraction
 		@b.set_aliased_input(8, @m_inst.aliased_output(10))   # b load from bus
 		@out.set_aliased_input(8, @m_inst.aliased_output(11)) # out load from bus
+		@c.set_aliased_input(8, Simulation::FALSE)
+		@tmp.set_aliased_input(8, Simulation::FALSE)
 		
 		# wire pc jump to false
 		(0...16).each do |idx|
@@ -92,7 +100,7 @@ class ComputerSAP2
 		# ALU inputs are A and B regs
 		(0...8).each do |idx|
 			@alu.set_aliased_input(idx, @a.aliased_output(idx))
-			@alu.set_aliased_input(8 + idx, @b.aliased_output(idx))
+			@alu.set_aliased_input(8 + idx, @tmp.aliased_output(idx))
 		end	
 		
 		# connect MAR to RAM address
@@ -110,10 +118,10 @@ class ComputerSAP2
 		end
 		
 		# disable ram input
-		(0...8).each do |idx|
+		(0...16).each do |idx|
 			@ram.set_aliased_input(idx, Simulation::FALSE)
 		end
-		@ram.set_aliased_input(12, Simulation::FALSE)
+		@ram.set_aliased_input(16, Simulation::FALSE)
 
 	end
 	
@@ -155,6 +163,7 @@ class ComputerSAP2
 		puts "=================================="
 		
 		puts "  A#{(cntr(6) ? '*' : ' ')}: " + reg_format(@a,true) + "  B#{(cntr(10) ? '*' : ' ')}: " + reg_format(@b,true)
+		puts "  C#{(cntr(6) ? '*' : ' ')}: " + reg_format(@a,true) + "  TMP#{(cntr(10) ? '*' : ' ')}: " + reg_format(@b,true)
 		puts "         ALU#{cntr(8) ? '-' : '+'}: " + reg_format(@alu, true)
 		print "BUS : " + reg_format(@bus, true)
 		

@@ -21,6 +21,7 @@ class ComputerSAP1
 		@alu = ComponentGroup.build_alu8(@sim)
 		@out = ComponentGroup.build_register_n(@sim, 8)		
 		@ir = ComponentGroup.build_register_n(@sim, 8)
+			
 		#binary display?
 		
 		microcode = File.readlines("sap1.rom").collect do |l| l.strip end
@@ -67,11 +68,19 @@ class ComputerSAP1
 		@b.set_aliased_input(8, @m_inst.aliased_output(10))   # b load from bus
 		@out.set_aliased_input(8, @m_inst.aliased_output(11)) # out load from bus
 		
-		# wire pc jump to false
+		# wire pc jump to false		
 		(0...4).each do |idx|
 			@pc.set_aliased_input(idx, Simulation::FALSE)
-		end
+		end		
 		@pc.set_aliased_input(5, Simulation::FALSE)
+				
+		# mc early reset, described on pg 163
+		@mc_reset_not = ComponentGroup.build_or_n_gate(@sim, 12)
+		@mc_reset = @sim.register_component(NotGate.new)
+		(0...12).each do |idx|
+			@mc_reset_not.set_aliased_input(idx, @m_inst.aliased_output(idx))
+		end
+		@mc_reset.set_input(0, @mc_reset_not.aliased_output(0))
 		
 		# wire cntr jump to false
 		(0...6).each do |idx|
@@ -79,6 +88,7 @@ class ComputerSAP1
 		end
 		# mc cntr to high
 		@m_cntr.set_aliased_input(4, Simulation::TRUE)
+		@m_cntr.set_aliased_input(5, @mc_reset)
 		
 		# ALU inputs are A and B regs
 		(0...8).each do |idx|
@@ -123,7 +133,8 @@ class ComputerSAP1
 	end	
 	
 	def format_ir(ir)
-	 reg_format(@ir)  +  " (" + case reg_format(@ir)[0,4]
+	 ir = reg_format(@ir)
+	 ir[0,4] + "(" + case ir[0,4]
 			when "0000"
 				"LDA"
 			when "0001"
@@ -136,7 +147,7 @@ class ComputerSAP1
 				"HLT"
 			else
 				"UNKNOWN"
-		end + ")"
+		end + ")" + ir[4,4]
 	end
 	
 	def display()		
@@ -160,9 +171,9 @@ class ComputerSAP1
 		puts "Microcode Instruction ROM output (next step):"
 		puts "  PC Inc:    #{c[0]}      A Load:    #{c[6]}    "
 		puts "  PC Write:  #{c[1]}      A Write:   #{c[7]}    "
-		puts "  MAR Load:  #{c[2]}      ALU Sub: #{c[8]}      "
-		puts "  RAM Write: #{c[3]}      ALU Write:   #{c[9]}  "
-		puts "  IR Load :  #{c[4]}      B Load: #{c[10]}      "
+		puts "  MAR Load:  #{c[2]}      ALU Sub:   #{c[8]}      "
+		puts "  RAM Write: #{c[3]}      ALU Write: #{c[9]}  "
+		puts "  IR Load :  #{c[4]}      B Load:    #{c[10]}      "
 		puts "  IR Write:  #{c[5]}      OUT Load:  #{c[11]}   "
 		puts 
 
@@ -171,9 +182,11 @@ class ComputerSAP1
 	
 	def run()
 	
+		display()
+		STDIN.gets
 		while true do 						
 			@sim.update(:low)
-			#display()										
+			display()										
 			@sim.update(:high)
 			
 			puts "OUTPUT: #{reg_decimal(@out)}" if cntr(11)
@@ -182,7 +195,7 @@ class ComputerSAP1
 				break
 			end
 			
-			# s = STDIN.gets
+			STDIN.gets
 		end
 	end
 	

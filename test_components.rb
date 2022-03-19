@@ -314,6 +314,20 @@ class TestSimple < Test::Unit::TestCase
 		})
 	end
 	
+	def test_encoder4x2
+		comp = ComponentGroup.build_encoder4x2(@sim)
+		
+		help_test_component_group_cases(comp,
+			{
+			"0000" => "00",  # unspecified
+			"0001" => "00",
+			"0010" => "01",
+			"0100" => "10",
+			"1000" => "11"
+			}
+		)
+	end
+	
 	def test_encoder8x3 # MSB
 		comp = ComponentGroup.build_encoder8x3(@sim)
 		
@@ -726,6 +740,32 @@ class TestSimple < Test::Unit::TestCase
 		)
 	end
 	
+	def test_bus8x16
+		comp = ComponentGroup.build_bus8x16(@sim)
+
+		setup = "0010011101000001" + # 1
+			    "0010011101000010" + # 2
+			    "0010011101000011" + # 3
+			    "0010011101000100" + # 4
+			    "0010011101000101" + # 5
+			    "0010011101000110" + # 6
+			    "0010011101000111" + # 7
+			    "0010011101001000"  # 8
+
+		help_test_component_group_cases(comp,
+			{
+				setup + "10000000" => "0010011101000001",
+				setup + "01000000" => "0010011101000010",
+				setup + "00100000" => "0010011101000011",
+				setup + "00010000" => "0010011101000100",
+				setup + "00001000" => "0010011101000101",
+				setup + "00000100" => "0010011101000110",
+				setup + "00000010" => "0010011101000111",
+				setup + "00000001" => "0010011101001000"
+			}
+		)
+	end
+	
 	#################################################################################
 	#########  Test clocked component groups
 	#################################################################################
@@ -1033,8 +1073,8 @@ class TestSimple < Test::Unit::TestCase
 	end	
 	
 	def test_microcode
-		data_in = File.readlines("computer1a.rom").collect do |l| l.strip end
-		data_out = File.readlines("computer1b.rom").collect do |l| l.strip end
+		data_in = File.readlines("basic/computer1a.rom").collect do |l| l.strip end
+		data_out = File.readlines("basic/computer1b.rom").collect do |l| l.strip end
 	
 		comp = ComponentGroup.build_microcode(@sim, 6,4,16,data_in, data_out)
 	

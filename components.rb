@@ -1,14 +1,14 @@
-TRACING = true
-
 class Component	
-	attr_reader :inputs # for debug
+	attr_reader :inputs # for debug/display only
 
 	def initialize(num_inputs)
 		@inputs = Array.new(num_inputs)
 	end
 	
 	def output
-		# raise "invalid input" if DEBUG and @inputs.any? do |i| (not [true,false].include?(i.output) end
+		@inputs.each_with_index do |i, idx|
+			raise "input #{idx} not setup" unless i
+		end
 	end
 	
 	def clocked?
@@ -57,8 +57,7 @@ class OrGate < Component
 	end
 	
 	def output	
-		raise 'input 0 missing' unless @inputs[0]
-		raise 'input 1 missing' unless @inputs[1]
+		super
 		@inputs[0].output or @inputs[1].output
 	end
 end
@@ -69,8 +68,7 @@ class AndGate < Component
 	end
 	
 	def output
-		raise 'input 0 missing' unless @inputs[0]
-		raise 'input 1 missing' unless @inputs[1]
+		super
 		@inputs[0].output and @inputs[1].output
 	end
 end
@@ -81,7 +79,7 @@ class BufferGate < Component
 	end
 	
 	def output		
-		raise "input 0 missing on #{self}" unless @inputs[0]		
+		super		
 		@inputs[0].output		
 	end
 end
@@ -92,8 +90,7 @@ class XorGate < Component
 	end
 	
 	def output
-		raise 'input 0 missing' unless @inputs[0]
-		raise 'input 1 missing' unless @inputs[1]
+		super
 		@inputs[0].output ^ @inputs[1].output
 	end
 end	
@@ -104,7 +101,7 @@ class NotGate < Component
 	end
 	
 	def output
-		raise 'input 0 missing' unless @inputs[0]		
+		super	
 		not (@inputs[0].output)
 	end
 end
@@ -129,6 +126,7 @@ class DataLatch < Component
 	end
 	
 	def output
+		super
 		@value
 	end
 	

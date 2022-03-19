@@ -8,13 +8,17 @@ class ComponentGroup
 	end
 	
 	def debug_override_input_values(inputs)
-		raise "bad override length #{inputs.size} != #{@inputs.size}"
+		raise "bad override length #{inputs.size} != #{@inputs.size}" if inputs.size != @inputs.size
 		inputs.split("").each_with_index do |i,n|			
 			gate = Simulation::FALSE if ["0","F"].include? i
 			gate = Simulation::TRUE if ["1","T"].include? i
 			raise "invalid input #{inputs}" unless gate
 			self.set_aliased_input(n, gate)
 		end	
+	end
+	
+	def default
+		debug_override_input_values("0" * @inputs.size)
 	end
 	
 	def display(name)	
@@ -68,6 +72,7 @@ class ComponentGroup
 		@inputs[external_input_num]
 	end
 	
+	# retrieve an output component, can be used to alias it again in a parent cg
 	def aliased_output(external_output_num)
 		raise "out of range #{external_output_num}" unless external_output_num < @outputs.size
 		@outputs[external_output_num]
@@ -76,8 +81,7 @@ class ComponentGroup
 	### Logical Component Groups (higher-level components)
 	### These mainly just build actual components, but you can use the cg you get back to 
 	### attach the cg's inputs and outputs to other components
-	### after that you can throw away the cg unless you want to reference it, for example, to display a register
-	
+	### after that you can throw away the cg unless you want to reference it, for example, to display it as one register	
 	def self.build_or4_gate(sim)
 		cg = ComponentGroup.new(4,1)
 		#internal components
@@ -118,14 +122,52 @@ class ComponentGroup
 		cg
 	end
 	
+	def self.build_and_n_gate(sim, n)
+		cg = ComponentGroup.new(n, 1)
+		
+		# internal components
+		gates = Array.new(n-1) do sim.register_component(AndGate.new) end
+		# internal wiring
+		(1...(gates.size)).each do |idx|
+			gates[idx].set_input(0, gates[idx - 1])
+		end
+		# external wiring
+		cg.alias_input(0, gates[0], 0)
+		(1...n).each do |idx|
+			cg.alias_input(idx, gates[idx - 1], 1)
+		end
+		cg.alias_output(0, gates.last)
+		
+		cg				
+	end
+	
+	def self.build_or_n_gate(sim, n)
+		cg = ComponentGroup.new(n, 1)
+		
+		# internal components
+		gates = Array.new(n-1) do sim.register_component(OrGate.new) end
+		# internal wiring
+		(1...(gates.size)).each do |idx|
+			gates[idx].set_input(0, gates[idx - 1])
+		end
+		# external wiring
+		cg.alias_input(0, gates[0], 0)
+		(1...n).each do |idx|
+			cg.alias_input(idx, gates[idx - 1], 1)
+		end
+		cg.alias_output(0, gates.last)
+		
+		cg				
+	end
+	
 	def self.build_bit_register(sim, on_clock = :high, initial_value = false)
 		cg = ComponentGroup.new(2,1)
 		
-		b = sim.register_component(BufferGate.new) #load
-			
+		#internal components
+		b = sim.register_component(BufferGate.new) #load			
 		n = sim.register_component(NotGate.new)
-		a1 = sim.register_component(AndGate.new) # previous value AND not load?
-		a2 = sim.register_component(AndGate.new) # new value and load?
+		a1 = sim.register_component(AndGate.new) # previous value AND not load
+		a2 = sim.register_component(AndGate.new) # new value and load
 		o = sim.register_component(OrGate.new)
 		dl = sim.register_clocked_component(DataLatch.new(initial_value), on_clock)
 		
@@ -187,6 +229,44 @@ class ComponentGroup
 			cg.alias_output(idx, b)
 		end
 			
+		cg
+	end
+	
+	def self.build_encoder2x1(sim)
+		cg = ComponentGroup.new(2,1)
+		
+		b0 = sim.register_component(BufferGate.new) 
+		b1 = sim.register_component(BufferGate.new)
+		
+		cg.alias_input(0, b0, 0)
+		cg.alias_input(1, b1, 0)
+		cg.alias_output(0, b1)
+		
+		cg
+	end
+	
+	def self.build_encoder4x2(sim)
+		cg = ComponentGroup.new(4,2)
+		
+		#internal components
+		b0 = sim.register_component(BufferGate.new)		
+		b = sim.register_component(BufferGate.new)		
+		o1 = sim.register_component(OrGate.new)
+		o2 = sim.register_component(OrGate.new)
+
+		#internal wiring
+		o1.set_input(1, b)
+		o2.set_input(1, b)
+		
+		#external wiring
+		cg.alias_input(0, b, 0)
+		cg.alias_input(1, o2, 0)
+		cg.alias_input(2, o1, 0)
+		cg.alias_input(3, b0, 0)
+		
+		cg.alias_output(0, o2)
+		cg.alias_output(1, o1)
+
 		cg
 	end
 	
@@ -289,7 +369,6 @@ class ComponentGroup
 			fa = ComponentGroup.build_fulladder(sim)
 		end
 				
-		
 		#internal wiring			
 		#connect carry-in to carry-out of previous adder		
 		(0...(n-1)).each do |idx|
@@ -461,44 +540,6 @@ class ComponentGroup
 		cg.alias_output(0, out.aliased_output(0))		
 		
 		cg
-	end
-	
-	def self.build_and_n_gate(sim, n)
-		cg = ComponentGroup.new(n, 1)
-		
-		# internal components
-		gates = Array.new(n-1) do sim.register_component(AndGate.new) end
-		# internal wiring
-		(1...(gates.size)).each do |idx|
-			gates[idx].set_input(0, gates[idx - 1])
-		end
-		# external wiring
-		cg.alias_input(0, gates[0], 0)
-		(1...n).each do |idx|
-			cg.alias_input(idx, gates[idx - 1], 1)
-		end
-		cg.alias_output(0, gates.last)
-		
-		cg				
-	end
-	
-	def self.build_or_n_gate(sim, n)
-		cg = ComponentGroup.new(n, 1)
-		
-		# internal components
-		gates = Array.new(n-1) do sim.register_component(OrGate.new) end
-		# internal wiring
-		(1...(gates.size)).each do |idx|
-			gates[idx].set_input(0, gates[idx - 1])
-		end
-		# external wiring
-		cg.alias_input(0, gates[0], 0)
-		(1...n).each do |idx|
-			cg.alias_input(idx, gates[idx - 1], 1)
-		end
-		cg.alias_output(0, gates.last)
-		
-		cg				
 	end
 		
 	def self.build_mux_n(sim, data_n)		
@@ -725,6 +766,44 @@ class ComponentGroup
 		
 		cg
 	end
+	
+	# take x(3) signals to choose between y(8) inputs.  inputs are w(16) wide...
+	def self.build_bus8x16(sim)
+		
+		addr_n = 3
+		height_n = 8
+		width_n = 16		
+		
+		cg = ComponentGroup.new(width_n * height_n + height_n, width_n)
+				
+		#internal components
+		enc = ComponentGroup.build_encoder8x3(sim)
+		m = Array.new(width_n) do ComponentGroup.build_mux8(sim) end
+		
+		(0...width_n).each do |idx|		
+			# internal wiring			
+			m[idx].set_aliased_input(8, enc.aliased_output(0))
+			m[idx].set_aliased_input(9, enc.aliased_output(1))
+			m[idx].set_aliased_input(10, enc.aliased_output(2))			
+			
+			# external wiring			
+			(0...height_n).each do |j|
+				cg.alias_input(idx + j * width_n, *m[idx].aliased_input(j))				
+			end			
+			cg.alias_output(idx, m[idx].aliased_output(0))
+		end		
+		(0...height_n).each do |idx|
+			cg.alias_input(width_n * 8 + idx, *enc.aliased_input(idx))
+		end
+		
+		cg.default # prevent having to set every bus bit
+		
+		cg
+	end
+	
+	# def self.build_bus_n_m(sim, width_n, paths_n)
+		# encoder
+	# end
 		
 	def self.build_ram8x8(sim, on_clock = :high, initial_data = nil) #data 8 MSB, 3 addr MSB, 1 load
 		cg = ComponentGroup.new(12,8)
@@ -951,7 +1030,7 @@ class ComponentGroup
 		end
 
 		cg.alias_input(width_n + addr_n + 0, *load.aliased_input(0))		
-				
+		cg.default
 		cg
 	end
 	
@@ -1185,9 +1264,6 @@ class ComponentGroup
 	end
 
 	def self.build_microcode(sim, inst_n, cntr_n, width_n, data_in, data_out) 
-		
-		# raise "unsupported width_n #{width_n}" if width_n != 16
-		
 		cg = ComponentGroup.new(inst_n + cntr_n, width_n)
 		
 		#internal components
