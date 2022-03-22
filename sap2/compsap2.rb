@@ -13,14 +13,12 @@ class ComputerSAP2
 		#internal components
 		@bus = ComponentGroup.build_bus8x16(@sim)
 		@sim.show_gate_count("bus")
-		# @bus = ComponentGroup.build_bus_n_m(@sim, 9, 16)
 		@mar = ComponentGroup.build_register_n(@sim, 16)
 		@sim.show_gate_count("mar")
 		@ram = ComponentGroup.build_ram_n_m(@sim, 8, 256, :high, program)
 		@sim.show_gate_count("ram")
 		@pc = ComponentGroup.build_counter_n(@sim, 16)
 		@sim.show_gate_count("pc")
-		
 		@a = ComponentGroup.build_register_n(@sim, 8)
 		@sim.show_gate_count("a")
 		@b = ComponentGroup.build_register_n(@sim, 8)
@@ -40,13 +38,8 @@ class ComputerSAP2
 		@sim.show_gate_count("flags")
 		#binary display?
 		
-		microcode = File.readlines("sap2.rom").collect do |l| l.strip end		
-		# @m_inst = ComponentGroup.build_rom_n_m_fast(@sim, 14, 4096, microcode)
+		microcode = File.readlines("sap2.rom").collect do |l| l.strip end
 		@m_inst = RomChip.new(@sim, 20, 4096, microcode)
-		# @m_inst = ComponentGroup.build_rom_n_m(@sim, 14, 4096 ,microcode)
-		
-		# @sim.show_gate_count("m_inst")
-		
 		@m_cntr = ComponentGroup.build_counter_register_n(@sim, 4, :low) # 6-bit ring counter?
 		@sim.show_gate_count("m_cntr")		
 		
@@ -86,7 +79,6 @@ class ComputerSAP2
 			@pc.set_aliased_input(idx, @bus.aliased_output(idx))
 		end
 		
-		
 		# set control signals
 		@pc.set_aliased_input(16, @m_inst.aliased_output(0))   # pc increment
 		@pc.set_aliased_input(17, @m_inst.aliased_output(1))   # pc jump
@@ -116,7 +108,6 @@ class ComputerSAP2
 		end
 		# mc cntr to high
 			
-		
 		# on second step of JNE instruction, jump to 16th micro inst if zero
 		jump = ComponentGroup.build_and_n_gate(@sim, 13)		
 		jump.set_aliased_input(0, @ir.aliased_output(0))
@@ -142,12 +133,8 @@ class ComputerSAP2
 		jump.set_aliased_input(11, n)
 		
 		jump.set_aliased_input(12, @flags.aliased_output(0))
-		# jn = @sim.register_component(NotGate.new)
-		# jn.set_input(0, @flags.aliased_output(0))
-		# @jump.set_aliased_input(2, jn)
 		@m_cntr.set_aliased_input(4, jump.aliased_output(0)) #jump
 		@m_cntr.set_aliased_input(5, Simulation::TRUE)  #enable
-		# @m_cntr.set_aliased_input(6, Simulation::FALSE) #jump
 		@m_cntr.set_aliased_input(6, @mc_reset)         #zero		
 		
 		# ALU inputs are A and B regs
@@ -179,8 +166,8 @@ class ComputerSAP2
 		@flags.set_aliased_input(2, @alu.aliased_output(0)) # MSB is sign bit
 		@flags.set_aliased_input(3, @m_inst.aliased_output(16)) # save flags on alu write
 
-		print "Computer setup is complete.  Press enter to start processing."
-		STDIN.gets
+		print "Computer setup is complete.  Press enter to start processing." if DEBUG
+		STDIN.gets if DEBUG
 		
 	end
 	
@@ -196,29 +183,6 @@ class ComputerSAP2
 	
 	def cntr(idx)
 		@m_inst.aliased_output(idx).output
-	end	
-	
-	def format_alu()
-		o = reg_format(@alu)
-		# puts o
-		# o + "(" + case o[8,3]
-			# when "000"
-				# "ADD"
-			# when "001"
-				# "SUB"
-			# when "010"
-				# "INC"
-			# when "011"
-				# "DEC"
-			# when "100"
-				# "NOT"
-			# when "101"
-				# "AND"
-			# when "110"
-				# "OR"
-			# when "111"
-				# "XOR"
-		# end + ")"
 	end
 	
 	def alu_op(c)
@@ -292,17 +256,17 @@ class ComputerSAP2
 		puts "=================================="
 		c = reg_format(@m_inst)
 		
-		puts "  A#{(cntr(6) ? '*' : ' ')}: " + reg_format(@a,true) + "  B#{(cntr(10) ? '*' : ' ')}: " + reg_format(@b,true)
-		puts "  C#{(cntr(12) ? '*' : ' ')}: " + reg_format(@c,true) + "  TMP#{(cntr(13) ? '*' : ' ')}: " + reg_format(@tmp,true)
-		puts "         ALU: " + format_alu()[0,8] + " (#{alu_op(c[17,3])}) Flags: #{format_flags}"
+		puts "  A#{(cntr(8) ? '*' : ' ')}: " + reg_format(@a,true) + "  B#{(cntr(10) ? '*' : ' ')}: " + reg_format(@b,true)
+		puts "  C#{(cntr(12) ? '*' : ' ')}: " + reg_format(@c,true) + "  TMP#{(cntr(15) ? '*' : ' ')}: " + reg_format(@tmp,true)
+		puts "         ALU: " + reg_format(@alu)[0,8] + " (#{alu_op(c[17,3])}) Flags: #{format_flags}"
 		
 		print "BUS : " + reg_format(@bus, true)
 		
 		puts ""
-		puts "MAR#{(cntr(2) ? '*' : ' ')}: " + reg_format(@mar) + "     RAM : " + reg_format(@ram,true)
+		puts "MAR#{(cntr(3) ? '*' : ' ')}: " + reg_format(@mar) + "     RAM : " + reg_format(@ram,true)
 		puts ""
 		puts "PC#{(cntr(0) ? '+' : ' ')} :  " + reg_format(@pc, true) 
-		puts "IR#{(cntr(4) ? '*' : ' ')} :    " + format_ir + " cnt " + reg_format(@m_cntr)		
+		puts "IR#{(cntr(6) ? '*' : ' ')} :    " + format_ir + " cnt " + reg_format(@m_cntr)		
 		puts
 		
 		
@@ -342,7 +306,7 @@ class ComputerSAP2
 end 
 
 if (ARGV.size < 1)
-	puts "Usage: compsap2 <program> <--debug>"
+	puts "Usage: compsap2 <program> [--debug]"
 	exit 
 end
 

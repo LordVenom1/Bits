@@ -1,14 +1,6 @@
 require "test/unit"
 require_relative 'simulation.rb'
 
-# expose input and outputs for direct access
-# class Component
-	# attr_reader :inputs, :outputs
-# end
-
-DEBUG = false
-# DEBUG = true
-
 class TestSimple < Test::Unit::TestCase
 
 	def setup

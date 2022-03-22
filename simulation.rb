@@ -46,7 +46,7 @@ class Simulation
 	def show_gate_count(name)
 		temp = @total_gates
 		@total_gates = gate_counts
-		puts name + ": " + @total_gates.diff(temp).to_s		
+		puts name + ": " + @total_gates.diff(temp).to_s	if DEBUG
 	end
 end
 

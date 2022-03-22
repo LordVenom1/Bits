@@ -2,7 +2,7 @@ line_count = 0
 
 if (ARGV.size != 1)
 	puts "Usage: compile <name>"
-	puts "compiles <name>.src into <name>.rom"
+	puts "compiles <name>.src into <name>.bin"
 	exit
 end
 
