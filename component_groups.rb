@@ -7,7 +7,7 @@ class ComponentGroup
 		@outputs = Array.new(num_outputs)				
 	end
 	
-	def debug_override_input_values(inputs)
+	def override_input_values(inputs)
 		raise "bad override length #{inputs.size} != #{@inputs.size}" if inputs.size != @inputs.size
 		inputs.split("").each_with_index do |i,n|			
 			gate = Simulation::FALSE if ["0","F"].include? i
@@ -18,7 +18,7 @@ class ComponentGroup
 	end
 	
 	def default
-		debug_override_input_values("0" * @inputs.size)
+		override_input_values("0" * @inputs.size)
 	end
 	
 	def display(name)	
@@ -158,6 +158,30 @@ class ComponentGroup
 		cg.alias_output(0, gates.last)
 		
 		cg				
+	end
+	
+	def self.build_nor_n_gate(sim, n)
+		cg = ComponentGroup.new(n, 1)
+		
+		# internal components
+		gates = Array.new(n-1) do sim.register_component(OrGate.new) end
+		inv = sim.register_component(NotGate.new)
+		
+		# internal wiring
+		(1...(gates.size)).each do |idx|
+			gates[idx].set_input(0, gates[idx - 1])
+		end
+		inv.set_input(0, gates.last)
+		
+		# external wiring
+		cg.alias_input(0, gates[0], 0)
+		(1...n).each do |idx|
+			cg.alias_input(idx, gates[idx - 1], 1)
+		end
+		
+		cg.alias_output(0, inv)
+		
+		cg		
 	end
 	
 	def self.build_bit_register(sim, on_clock = :high, initial_value = false)
@@ -743,6 +767,38 @@ class ComponentGroup
 		cg
 	end
 	
+	def self.build_bus_n_m(sim, paths_n, width_n)
+		cg = ComponentGroup.new(width_n * paths_n + paths_n, width_n)
+		
+		#internal components
+		paths = Array.new(width_n * paths_n) do sim.register_component(AndGate.new) end
+		addr = ComponentGroup.build_bufferset(sim, paths_n)
+		o = Array.new(width_n) do ComponentGroup.build_or_n_gate(sim, paths_n) end
+		
+		#internal wiring
+		(0...paths_n).each do |pi|
+			(0...width_n).each do |bit|
+				paths[bit + pi * width_n].set_input(1, addr.aliased_output(pi))
+				o[bit].set_aliased_input(pi, paths[bit + pi * width_n])
+			end			
+		end
+		
+		#external wiring
+		(0...width_n).each do |bit|
+			(0...paths_n).each do |pi|
+				cg.alias_input(bit + pi * width_n, paths[bit + pi * width_n], 0)				
+			end
+			cg.alias_output(bit, o[bit].aliased_output(0))
+		end		
+		(0...paths_n).each do |pi|
+			cg.alias_input(width_n * paths_n + pi, *addr.aliased_input(pi))
+		end
+		
+		cg.default
+		
+		cg
+	end
+	
 	def self.build_bus8x8(sim) 
 		cg = ComponentGroup.new(72,8)
 				
@@ -1035,7 +1091,7 @@ class ComponentGroup
 	end
 	
 	def self.build_counter_n(sim, n = 8)
-		cg = ComponentGroup.new(n + 2, n)
+		cg = ComponentGroup.new(n + 2, n) # inc, jmp
 		
 		#internal components
 		r = ComponentGroup.build_register_n(sim, n)
@@ -1053,9 +1109,9 @@ class ComponentGroup
 			add.set_aliased_input(idx, r.aliased_output(idx))
 			add.set_aliased_input(n+idx, Simulation::FALSE)
 		end
-		r.set_aliased_input(n, inc)
 		carryin.set_input(0, inc)
 		carryin.set_input(1, jmp)
+		r.set_aliased_input(n, carryin)
 		add.set_aliased_input(n*2, inc)
 		
 		#external wiring
@@ -1082,7 +1138,7 @@ class ComponentGroup
 				
 		#internal wiring
 		(0...n).each do |bit|			
-			m[bit].set_aliased_input(0, add.aliased_output(bit))
+			m[bit].set_aliased_input(0, add.aliased_output(bit))			
 			m[bit].set_aliased_input(2, Simulation::FALSE)
 			m[bit].set_aliased_input(3, Simulation::FALSE)			
 			m[bit].set_aliased_input(4, zero)
@@ -1330,23 +1386,149 @@ class ComponentGroup
 		cg		
 	end
 	
+	def self.build_alu8_v2(sim) 
+		cg = ComponentGroup.new(19,9) 
+		
+		# 000 - add
+		# 001 - subtract
+		# 010 - increment
+		# 011 - decrement
+
+		# 100 - 1's complement
+		# 101 - bitwise AND
+		# 110 - bitwise OR
+		# 111 - bitwise XOR
+		
+		#internal components
+		@a = ComponentGroup.build_bufferset(sim, 8)
+		@b = ComponentGroup.build_bufferset(sim, 8)		
+		@add = ComponentGroup.build_fulladdersub8(sim)
+		@ops = ComponentGroup.build_bufferset(sim, 3)
+		
+		@in_1 = Array.new(8) do |idx| ComponentGroup.build_mux2(sim) end
+		@in_2 = Array.new(8) do |idx| ComponentGroup.build_mux2(sim) end
+		
+		@op_not = Array.new(8) do |idx|			
+			c = sim.register_component(NotGate.new)
+			c.set_input(0, @a.aliased_output(idx))
+			c			
+		end
+		@op_and = Array.new(8) do |idx|
+			c = sim.register_component(AndGate.new)
+			c.set_input(0, @a.aliased_output(idx))
+			c.set_input(1, @b.aliased_output(idx))
+			c
+		end
+		@op_or = Array.new(8) do |idx|
+			c = sim.register_component(OrGate.new)
+			c.set_input(0, @a.aliased_output(idx))
+			c.set_input(1, @b.aliased_output(idx))
+			c			
+		end
+		@op_xor = Array.new(8) do |idx|
+			c = sim.register_component(XorGate.new)
+			c.set_input(0, @a.aliased_output(idx))
+			c.set_input(1, @b.aliased_output(idx))
+			c			
+		end		
+		
+		#internal wiring
+		@m2 = Array.new(8) do |idx| ComponentGroup.build_mux2(sim) end
+		@m4 = Array.new(8) do |idx| ComponentGroup.build_mux4(sim) end		
+				
+		(0...8).each do |idx|
+			@in_1[idx].set_aliased_input(0, @a.aliased_output(idx)) 
+			@in_1[idx].set_aliased_input(1, @b.aliased_output(idx)) # 1
+			@in_1[idx].set_aliased_input(2, @ops.aliased_output(1))
+			@in_2[idx].set_aliased_input(0, @b.aliased_output(idx)) 
+			@in_2[idx].set_aliased_input(1, idx == 7 ? Simulation::TRUE : Simulation::FALSE) # 1
+			@in_2[idx].set_aliased_input(2, @ops.aliased_output(1))
+		
+			@m2[idx].set_aliased_input(0, @add.aliased_output(idx))
+			@m2[idx].set_aliased_input(1, @m4[idx].aliased_output(0))
+			@m2[idx].set_aliased_input(2, @ops.aliased_output(0))
+			
+			@m4[idx].set_aliased_input(0, @op_not[idx])
+			@m4[idx].set_aliased_input(1, @op_and[idx])
+			@m4[idx].set_aliased_input(2, @op_or[idx])
+			@m4[idx].set_aliased_input(3, @op_xor[idx])
+			@m4[idx].set_aliased_input(4, @ops.aliased_output(1))
+			@m4[idx].set_aliased_input(5, @ops.aliased_output(2))
+			
+			@add.set_aliased_input(idx, @in_1[idx].aliased_output(0))
+			@add.set_aliased_input(8 + idx, @in_2[idx].aliased_output(0))
+		end
+		@add.set_aliased_input(16, @ops.aliased_output(2))	
+		
+		
+		#external wiring
+		(0...8).each do |idx|
+			cg.alias_input(idx, *@a.aliased_input(idx))
+			cg.alias_input(8 + idx, *@b.aliased_input(idx))
+			cg.alias_output(idx, @m2[idx].aliased_output(0))
+		end
+		(0...3).each do |idx|
+			cg.alias_input(16 + idx, *@ops.aliased_input(idx)) # sub
+		end
+		cg.alias_output(8, @add.aliased_output(8))
+		
+		# cg.override_input_values("0101100000001000011") # dec 8 = 7
+		
+		# @add.display("add")		
+		# exit
+	
+		cg		
+	end
+	
 end		
 
+class RomChip < ComponentGroup
 
+	def data
+		@data
+	end
+	
+	def current_addr		
+		x = (0...@addr_n).collect do |ai|
+			i, num = *@addr.aliased_input(ai)
+			(i.inputs[num].output ? '1' : '0')			
+		end.join("").to_i(2)		
+	end
+	
+	def current_output(idx)
+		@data[current_addr][idx] == '0' ? false : true
+	end
 
-
-
-# # # ai in load signl
-# # # a out signal
-# # # b in
-# # # b out
-
-# # # 2x 8 inputs
-# # # eo out?
-# # # substract?
-
-
-
+	def initialize(sim, width_n, height_n, data)
+		#internal components
+		@width_n = width_n
+		@height_n = height_n
+		@addr_n = Math::log(height_n,2).to_i
+		@data = data		
+		@addr = ComponentGroup.build_bufferset(sim, @addr_n)
+		super(@addr_n, @width_n)				
+		@pins = Array.new(@width_n) do |idx|
+			Class.new do
+				def initialize(rom_chip, idx)
+					@rom_chip = rom_chip
+					@idx = idx
+				end
+				def output					
+					@rom_chip.current_output(@idx)
+				end
+			end.new(self, idx)
+		end
+		
+		#external wiring
+		(0...@addr_n).each do |idx|
+			alias_input(idx, *@addr.aliased_input(idx))
+		end
+		(0...@width_n).each do |idx|
+			alias_output(idx, @pins[idx])
+		end
+	end
+end
+	
 
 
 

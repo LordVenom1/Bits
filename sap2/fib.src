@@ -1,0 +1,13 @@
+SET swap = 1
+MVI A, 1
+MVI B, 1
+MVI C, 11
+MORE:
+ADD B
+OUT
+STB swap
+MOV B,A
+LDA swap
+DCR C
+JNZ MORE
+HLT

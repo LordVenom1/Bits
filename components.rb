@@ -16,7 +16,7 @@ class Component
 	end
 	
 	def set_input(n, output)
-		raise 'bad output' unless output.class.ancestors.include? Component
+		# raise 'bad output' unless output.class.ancestors.include? Component
 		@inputs[n] = output
 	end
 	
@@ -143,5 +143,7 @@ class DataLatch < Component
 		@cache = nil
 	end	
 end
+
+
 
 

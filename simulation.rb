@@ -16,6 +16,9 @@ class Simulation
 	
 	def register_clocked_component(c, state)
 		raise "use register_component" unless c.clocked?
+		
+		@components << c
+		
 		if state == :high
 			@main_clock.register_component(c)
 		elsif state == :low

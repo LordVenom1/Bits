@@ -27,7 +27,9 @@ I've also started to process of building out the SAP2, a much more capable machi
 
 ## Background:
 - Ever since taking an electrical engineering course in college, the experience of understanding and building a breadboard computer 
-out of gates and latches has stuck with me, as it has for many other people:  [YouTube - Minecraft - Programmable 8-bit computer](https://youtu.be/ydd6l3iYOZE)
+out of gates and latches has stuck with me, as it has for many other people:  
+- [YouTube - Minecraft - Programmable 8-bit computer](https://youtu.be/ydd6l3iYOZE)
+- [Github - EnigmaCurry/SAP](https://github.com/EnigmaCurry/SAP)
 - This project is an attempt to build a simple 8-bit computer, but by simulating the processing in code, instead of on a breadboard.
 - Not only is it a fun project, I find that it's an interesting project to explore different ways to structure the simulation.
 

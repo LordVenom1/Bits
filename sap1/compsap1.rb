@@ -200,7 +200,7 @@ class ComputerSAP1
 	end
 	
 	if (ARGV.size != 1)
-		puts "Usage: comp <program>"
+		puts "Usage: compsap1 <program>"
 		exit 
 	end
 end 
