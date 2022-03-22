@@ -1034,37 +1034,9 @@ class TestSimple < Test::Unit::TestCase
 		help_test_component_group_case(comp,"0010100101","10100101") 
 		help_test_component_group_case(comp,"0001010110","01010110") 
 		help_test_component_group_case(comp,"0010111111","10111111")
-	end
+	end	
 	
-	def test_counter
-		comp = ComponentGroup.build_counter_n(@sim, 8)
-		
-		help_test_component_group_case(comp, "0000000000","00000000")
-		help_test_component_group_case(comp, "0000000000","00000000")
-		help_test_component_group_case(comp, "0000000010","00000001")			
-		help_test_component_group_case(comp, "0000000010","00000010")			
-		help_test_component_group_case(comp, "0000000000","00000010")					
-		help_test_component_group_case(comp, "0000000000","00000010")	
-		help_test_component_group_case(comp, "0000000010","00000011")	
-	end
-	
-	def test_programcounterjump
-		comp = ComponentGroup.build_counter_n(@sim, 8)
-		
-		help_test_component_group_case(comp, "0000000000","00000000")
-		help_test_component_group_case(comp, "0000000000","00000000")
-		help_test_component_group_case(comp, "0000000010","00000001")			
-		help_test_component_group_case(comp, "0000000010","00000010")
-		help_test_component_group_case(comp, "0000000010","00000011")		
-		help_test_component_group_case(comp, "0000100011","00001000")
-		help_test_component_group_case(comp, "0010100011","00101000")
-		help_test_component_group_case(comp, "1110100001","00101000")
-		help_test_component_group_case(comp, "0000000010","00101001")
-		help_test_component_group_case(comp, "0000000010","00101010")
-		help_test_component_group_case(comp, "0000000010","00101011")
-	end
-	
-	def test_microcounter
+	def test_counter_register
 		comp = ComponentGroup.build_counter_register_n(@sim, 4)
 		
 		#                           J E Z
@@ -1078,7 +1050,7 @@ class TestSimple < Test::Unit::TestCase
 		help_test_component_group_case(comp,"0000010","0111")			
 	end
 	
-	def test_microcounterjump
+	def test_counter_register_jump
 		comp = ComponentGroup.build_counter_register_n(@sim, 4)
 		
 		#                           J E Z
@@ -1090,7 +1062,7 @@ class TestSimple < Test::Unit::TestCase
 		help_test_component_group_case(comp,"0000010","0010")
 	end
 	
-	def test_microcounterzero
+	def test_counter_register_zero
 		comp = ComponentGroup.build_counter_register_n(@sim, 4)
 		
 		#                           J E Z
@@ -1098,23 +1070,10 @@ class TestSimple < Test::Unit::TestCase
 		help_test_component_group_case(comp,"0100010","0001")
 		help_test_component_group_case(comp,"0100010","0010")
 		help_test_component_group_case(comp,"0100011","0000")
-		help_test_component_group_case(comp,"0100111","0000") # zero overrides jump
+		help_test_component_group_case(comp,"0100101","0000") # zero overrides jump
 		help_test_component_group_case(comp,"0100010","0001")
 		help_test_component_group_case(comp,"0100010","0010")
 	end	
-	
-	def test_microcode
-		data_in = File.readlines("basic/computer1a.rom").collect do |l| l.strip end
-		data_out = File.readlines("basic/computer1b.rom").collect do |l| l.strip end
-	
-		comp = ComponentGroup.build_microcode(@sim, 6,4,16,data_in, data_out)
-	
-		# no real tests to be done, but exercise the component
-		help_test_component_group_set_inputs(comp, "0000100000")
-		(0...16).collect do |n|
-			comp.aliased_output(n).output
-		end
-	end
 
 	def test_alu8
 		comp = ComponentGroup.build_alu8(@sim)
@@ -1170,6 +1129,18 @@ class TestSimple < Test::Unit::TestCase
 			"0010110110000000110" => "10101101", # or  
 			"1101100110000001111" => "01011000", # xor 
 			"0010100100100000111" => "00001001"  # xor 
+			}
+		)
+	end
+	
+	def test_compareset
+		comp = ComponentGroup.build_compareset(@sim, "00110011")
+		help_test_component_group_cases(comp,
+			{
+			"00110011" => "1",
+			"00110010" => "0",
+			"00000000" => "0",
+			"11111111" => "0"
 			}
 		)
 	end

@@ -820,6 +820,8 @@ class ComponentGroup
 			cg.alias_output(idx, m[idx].aliased_output(0))
 		end		
 		
+		cg.default # prevent having to set every bus bit
+		
 		cg
 	end
 	
@@ -1090,51 +1092,63 @@ class ComponentGroup
 		cg
 	end
 	
-	def self.build_counter_n(sim, n = 8)
-		cg = ComponentGroup.new(n + 2, n) # inc, jmp
+	# Counter Register N-bit
+	# Register that can automatically increment.  Can also jump and zero.
+	# Input: N+3 - n-bit jump address, jump flag, increment flag, and zero flag
+	# Output: N - current counter value
+	# def self.build_counter_n(sim, n = 8)
+		# cg = ComponentGroup.new(n + 2, n) # inc, jmp
 		
-		#internal components
-		r = ComponentGroup.build_register_n(sim, n)
-		add = ComponentGroup.build_fulladder_n(sim, n)
-		m = Array.new(n) do ComponentGroup.build_mux2(sim) end
-		inc = sim.register_component(BufferGate.new)
-		jmp = sim.register_component(BufferGate.new)
-		carryin = sim.register_component(OrGate.new)
+		# #internal components
+		# r = ComponentGroup.build_register_n(sim, n)
+		# add = ComponentGroup.build_fulladder_n(sim, n)
+		# m = Array.new(n) do ComponentGroup.build_mux2(sim) end
+		# inc = sim.register_component(BufferGate.new)
+		# jmp = sim.register_component(BufferGate.new)
+		# carryin = sim.register_component(OrGate.new)
 		
-		#internal wiring
-		(0...n).each do |idx|
-			m[idx].set_aliased_input(0, add.aliased_output(idx))
-			m[idx].set_aliased_input(2, jmp)						
-			r.set_aliased_input(idx, m[idx].aliased_output(0))
-			add.set_aliased_input(idx, r.aliased_output(idx))
-			add.set_aliased_input(n+idx, Simulation::FALSE)
-		end
-		carryin.set_input(0, inc)
-		carryin.set_input(1, jmp)
-		r.set_aliased_input(n, carryin)
-		add.set_aliased_input(n*2, inc)
+		# #internal wiring
+		# (0...n).each do |idx|
+			# m[idx].set_aliased_input(0, add.aliased_output(idx))
+			# m[idx].set_aliased_input(2, jmp)						
+			# r.set_aliased_input(idx, m[idx].aliased_output(0))
+			# add.set_aliased_input(idx, r.aliased_output(idx))
+			# add.set_aliased_input(n+idx, Simulation::FALSE)
+		# end
+		# carryin.set_input(0, inc)
+		# carryin.set_input(1, jmp)
+		# r.set_aliased_input(n, carryin)
+		# add.set_aliased_input(n*2, inc)
 		
-		#external wiring
-		(0...n).each do |idx|
-			cg.alias_input(idx, *m[idx].aliased_input(1))
-			cg.alias_output(idx, r.aliased_output(idx))
-		end
+		# #external wiring
+		# (0...n).each do |idx|
+			# cg.alias_input(idx, *m[idx].aliased_input(1))
+			# cg.alias_output(idx, r.aliased_output(idx))
+		# end
 		
-		cg.alias_input(n, inc, 0)
-		cg.alias_input(n+1, jmp, 0)
+		# cg.alias_input(n, inc, 0)
+		# cg.alias_input(n+1, jmp, 0)
 		
-		cg
-	end
+		# cg
+	# end
 	
+	# Counter Register N-bit
+	# Register that can automatically increment.  Can also jump and zero.
+	# Input: N+3 - n-bit jump address, jump flag, increment flag, and zero flag
+	# Output: N - current counter value
 	def self.build_counter_register_n(sim, n, on_clock = :high) 
 		cg = ComponentGroup.new(n+3,n) # jump, enable, zero
 		
 		#internal components		
 		jump = sim.register_component(BufferGate.new)
+		inc = sim.register_component(BufferGate.new)
 		zero = sim.register_component(BufferGate.new)
 		r = ComponentGroup.build_register_n(sim, n, on_clock)		
 		m = Array.new(n) do ComponentGroup.build_mux4(sim) end		
 		add = ComponentGroup.build_fulladder_n(sim, n)
+		carry_in = sim.register_component(OrGate.new)
+		carry_in.set_input(0, inc)
+		carry_in.set_input(1, jump)		
 				
 		#internal wiring
 		(0...n).each do |bit|			
@@ -1153,9 +1167,11 @@ class ComponentGroup
 		
 		add.set_aliased_input(n*2, Simulation::TRUE) # carry in 1
 
+		r.set_aliased_input(n, carry_in)
+
 		#external wiring
 		cg.alias_input(n, jump, 0)
-		cg.alias_input(n+1, *r.aliased_input(n))
+		cg.alias_input(n+1, inc, 0)
 		cg.alias_input(n+2, zero, 0)
 		(0...n).each do |bit|
 			cg.alias_input(bit, *m[bit].aliased_input(1))
@@ -1165,6 +1181,10 @@ class ComponentGroup
 		cg
 	end
 	
+	# RomN
+	# Stores a single read-only register of data.  Used as building block for RomNxM.
+	# Input: 0
+	# Output: N - word of ROM data
 	def self.build_rom_n(sim, n, data)
 		raise "bad data size #{n} != #{data.size}" unless data.size == n
 		
@@ -1182,8 +1202,10 @@ class ComponentGroup
 		cg
 	end
 	
-	# width_n determines how wide each unit is, likely 8-bit
-	# height_n determines how many units we store
+	# RomNxM
+	# Stores read-only data in N-bit words, log2(M) address bits
+	# Input: log2(M) - input address for the data word to output
+	# Output: N - word of ROM data stored at input address
 	def self.build_rom_n_m(sim, width_n, height_n, data)
 	
 		addr_n = Math::log(height_n,2).to_i
@@ -1219,6 +1241,10 @@ class ComponentGroup
 		cg
 	end
 	
+	# Rom8x16
+	# Stores 128-bits of data in 8-bit words, 4-bit address
+	# Input: 4 - 4-bit address
+	# Output: 8 - word of ROM data stored at input address
 	def self.build_rom8x16(sim, data)
 		cg = ComponentGroup.new(4,8)
 		
@@ -1248,6 +1274,10 @@ class ComponentGroup
 		cg		
 	end
 	
+	# Rom8x256
+	# Stores 2k of data in 8-bit words, 8-bit address
+	# Input: 8 - 8-bit address
+	# Output: 8 - word of ROM data stored at input address
 	def self.build_rom8x256(sim, data)
 		cg = ComponentGroup.new(8,8)
 		
@@ -1283,6 +1313,10 @@ class ComponentGroup
 		cg
 	end
 	
+	# Rom8x1024
+	# Stores 8k of data in 8-bit words, 10-bit address
+	# Input: 10 - 10-bit address
+	# Output: 8 - word of ROM data stored at input address
 	def self.build_rom8x1024(sim, data)
 		cg = ComponentGroup.new(10,8)
 		
@@ -1317,58 +1351,12 @@ class ComponentGroup
 		end
 				
 		cg
-	end
-
-	def self.build_microcode(sim, inst_n, cntr_n, width_n, data_in, data_out) 
-		cg = ComponentGroup.new(inst_n + cntr_n, width_n)
-		
-		#internal components
-		inst = ComponentGroup.build_bufferset(sim, inst_n)
-		cntr = ComponentGroup.build_bufferset(sim, cntr_n)
-		
-		rom_in = nil
-		rom_out = nil
-		
-		case inst_n + cntr_n
-			when 4
-				rom_in = ComponentGroup.build_rom8x16(sim, data_in) #4,8
-				rom_out = ComponentGroup.build_rom8x16(sim, data_out) #4,8
-			when 8
-				rom_in = ComponentGroup.build_rom8x256(sim, data_in) #8,8
-				rom_out = ComponentGroup.build_rom8x256(sim, data_out) #8,8
-			when 10
-				rom_in = ComponentGroup.build_rom8x1024(sim, data_in) #10,8
-				rom_out = ComponentGroup.build_rom8x1024(sim, data_out) #10,8
-			else
-				raise "bit size #{inst_n} + #{cntr_n} not supported"
-		end
-		
-		#internal wiring
-		(0...inst_n).each do |idx|
-			rom_in.set_aliased_input(idx, inst.aliased_output(idx))
-			rom_out.set_aliased_input(idx, inst.aliased_output(idx))
-		end
-		(0...cntr_n).each do |idx|
-			rom_in.set_aliased_input(inst_n + idx, cntr.aliased_output(idx))
-			rom_out.set_aliased_input(inst_n + idx, cntr.aliased_output(idx))
-		end
-		
-		#external wiring
-		(0...inst_n).each do |idx|
-			cg.alias_input(idx, *inst.aliased_input(idx))
-		end		
-		(0...cntr_n).each do |idx|
-			cg.alias_input(inst_n + idx, *cntr.aliased_input(idx))
-		end
-		
-		(0...8).each do |idx|
-			cg.alias_output(idx, rom_in.aliased_output(idx))
-			cg.alias_output(8 + idx, rom_out.aliased_output(idx))			
-		end
-
-		cg
-	end
-			
+	end	
+	
+    # Arithmetic/Logic Unit (ALU)
+    # 2-function ALU
+	# Input: 17 - two 8-bit values, 1 bit to select subtraction
+	# Output: 8 - 8-bit output of addition/subtraction
 	def self.build_alu8(sim) 
 		cg = ComponentGroup.new(17,8)
 		
@@ -1386,18 +1374,21 @@ class ComponentGroup
 		cg		
 	end
 	
+	# Arithmetic/Logic Unit (ALU) v2
+	# 8-function ALU
+	# Input: 19 - two 8-bit values, 3 bits to determine the operator
+	# Output: 9 - the 8-bit output of the operator on the two inputs, 1 carry-out bit
+	# Operators:
+	#   000 - add (a+b)
+	#   001 - subtract (a-b)
+	#   010 - increment (b)
+	#   011 - decrement (b)
+	#   100 - 1's complement (a)
+	#   101 - bitwise AND (a & b)
+	#   110 - bitwise OR  (a | b)
+	#   111 - bitwise XOR (a ^ b)
 	def self.build_alu8_v2(sim) 
 		cg = ComponentGroup.new(19,9) 
-		
-		# 000 - add
-		# 001 - subtract
-		# 010 - increment
-		# 011 - decrement
-
-		# 100 - 1's complement
-		# 101 - bitwise AND
-		# 110 - bitwise OR
-		# 111 - bitwise XOR
 		
 		#internal components
 		@a = ComponentGroup.build_bufferset(sim, 8)
@@ -1472,16 +1463,45 @@ class ComponentGroup
 		end
 		cg.alias_output(8, @add.aliased_output(8))
 		
-		# cg.override_input_values("0101100000001000011") # dec 8 = 7
-		
-		# @add.display("add")		
-		# exit
-	
 		cg		
 	end
 	
+	# CompareSet
+	# Given a string RHS, of 0's and 1's, return whether all inputs match the stored values
+	# Input: rhs.size - the inputs to check
+	# Output: 1 - true if inputs match the rhs
+	def self.build_compareset(sim, rhs)
+		width_n = rhs.size
+		
+		cg = ComponentGroup.new(width_n, 1)
+		
+		#internal components
+		nor = ComponentGroup.build_nor_n_gate(sim, width_n)
+		xorset = Array.new(width_n) do sim.register_component(XorGate.new) end
+		
+		#internal wiring
+		(0...width_n).each do |idx|		
+			xorset[idx].set_input(1, rhs[idx] == "0" ? Simulation::FALSE : Simulation::TRUE)
+			nor.set_aliased_input(idx, xorset[idx])
+		end
+			
+		#external wiring
+		(0...width_n).each do |idx|
+			cg.alias_input(idx, xorset[idx], 0)
+		end
+		cg.alias_output(0, nor.aliased_output(0))
+		
+		cg		
+	end
 end		
 
+	# RomChip
+	# Produce output based on pre-loaded Read-only memory (ROM) data and the input address
+	# This component mimics build_rom_n_m but stores data in code instead of gates, for performance. 
+	# 	width_n = size of the word in ROM, typically 8-bit
+	# 	height_n = how many words are in the ROM data
+	# Input: log2 of height_n - address of the stored 
+	# Output: width_n - the data stored in the ROM at that address
 class RomChip < ComponentGroup
 
 	def data

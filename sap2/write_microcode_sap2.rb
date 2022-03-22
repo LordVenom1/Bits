@@ -81,19 +81,8 @@ addr = ("11000010" + "1000").to_i(2) # C2 JNZ
 control[addr] = "00110000000000000000" ; addr += 1  # PC write to MAR
 
 #                pppmrriiaabbccotaaaa
-#CNA - not A
-#ANA - and <a,b,c>
-#ani - and immediate
-#ORA - or <a,b,c>
-#ori - or immediate
-#XRA - xor <a,b,c>
-#xri - xor immeidate
-#
-
-
 addr = ("01000111" + "0010").to_i(2) # 47 MOV B,A
 control[addr] = "00000000011000000000" ; addr += 1  # A reg to B reg
-#                pppmrriiaabbccotaaaa
 
 #                pppmrriiaabbccotaaaa
 addr = ("00111010" + "0010").to_i(2) # 3A LDA
@@ -127,5 +116,15 @@ control[addr] = "00000000010000100000" ; addr += 1  # A reg to OUT reg
 #                pppmrriiaabbccotaaaa
 addr = ("01110110" + "0010").to_i(2) # 76 - HLT
 control[addr] = "00000000000000000000" ; addr += 1  # outside circuitry to stop the clock
+
+#                pppmrriiaabbccotaaaa
+#CNA - not A
+#ANA - and <a,b,c>
+#ani - and immediate
+#ORA - or <a,b,c>
+#ori - or immediate
+#XRA - xor <a,b,c>
+#xri - xor immeidate
+#
 
 File.open("sap2.rom","w") do |out| out.print control.join("\n") end

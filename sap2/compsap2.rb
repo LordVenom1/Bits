@@ -6,18 +6,19 @@ $stdout.sync = true
 # Digital Computer Electronics 3d edition by Malvino, Brown, starting page 140
 
 class ComputerSAP2
+	MC_INST_WIDTH = 20
 	
 	def initialize(program)
 		@sim = Simulation.new()
 		
 		#internal components
-		@bus = ComponentGroup.build_bus8x16(@sim)
+		@bus = ComponentGroup.build_bus8x8(@sim)
 		@sim.show_gate_count("bus")
-		@mar = ComponentGroup.build_register_n(@sim, 16)
+		@mar = ComponentGroup.build_register_n(@sim, 8)
 		@sim.show_gate_count("mar")
 		@ram = ComponentGroup.build_ram_n_m(@sim, 8, 256, :high, program)
 		@sim.show_gate_count("ram")
-		@pc = ComponentGroup.build_counter_n(@sim, 16)
+		@pc = ComponentGroup.build_counter_register_n(@sim, 8)
 		@sim.show_gate_count("pc")
 		@a = ComponentGroup.build_register_n(@sim, 8)
 		@sim.show_gate_count("a")
@@ -36,108 +37,82 @@ class ComputerSAP2
 		flag_zero = ComponentGroup.build_nor_n_gate(@sim, 8)		
 		@flags = ComponentGroup.build_register_n(@sim, 3)
 		@sim.show_gate_count("flags")
-		#binary display?
 		
 		microcode = File.readlines("sap2.rom").collect do |l| l.strip end
-		@m_inst = RomChip.new(@sim, 20, 4096, microcode)
+		@m_inst = RomChip.new(@sim, MC_INST_WIDTH, 4096, microcode)
 		@m_cntr = ComponentGroup.build_counter_register_n(@sim, 4, :low) # 6-bit ring counter?
 		@sim.show_gate_count("m_cntr")		
 		
 		#internal wiring		
 		# setup bus "outputs": determine which component gets to write to the bus on this cycle
-		(0...16).each do |idx| @bus.set_aliased_input(0 + idx, @pc.aliased_output(idx)) end				
-		(0...8).each do |idx| @bus.set_aliased_input(16 + 8 + idx, @ram.aliased_output(idx)) end
-		(0...8).each do |idx| @bus.set_aliased_input(32 + 12 + idx, idx < 4 ? @ir.aliased_output(idx + 4) : Simulation::FALSE) end
-		(0...8).each do |idx| @bus.set_aliased_input(48 + 8 + idx, @a.aliased_output(idx)) end
-		(0...8).each do |idx| @bus.set_aliased_input(64 + 8 + idx, @alu.aliased_output(idx)) end
-		(0...8).each do |idx| @bus.set_aliased_input(80 + 8 + idx,  @b.aliased_output(idx)) end
-		(0...8).each do |idx| @bus.set_aliased_input(96 + 8 + idx,  @c.aliased_output(idx)) end
-		(0...8).each do |idx| @bus.set_aliased_input(112 + 8 + idx, Simulation::FALSE) end	
+		(0...8).each do |idx| @bus.set_aliased_input(0 + idx, @pc.aliased_output(idx)) end				
+		(0...8).each do |idx| @bus.set_aliased_input(8 + idx, @ram.aliased_output(idx)) end
+		(0...8).each do |idx| @bus.set_aliased_input(16 + 4 + idx, idx < 4 ? @ir.aliased_output(idx + 4) : Simulation::FALSE) end
+		(0...8).each do |idx| @bus.set_aliased_input(24 + idx, @a.aliased_output(idx)) end
+		(0...8).each do |idx| @bus.set_aliased_input(32 + idx, @alu.aliased_output(idx)) end
+		(0...8).each do |idx| @bus.set_aliased_input(40 + idx, @b.aliased_output(idx)) end
+		(0...8).each do |idx| @bus.set_aliased_input(48 + idx, @c.aliased_output(idx)) end
+		(0...8).each do |idx| @bus.set_aliased_input(56 + idx, Simulation::FALSE) end	
 
-		@bus.set_aliased_input(128 + 0, @m_inst.aliased_output(1))  # pc write to bus
-		@bus.set_aliased_input(128 + 1, @m_inst.aliased_output(5))  # ram write to bus
-		@bus.set_aliased_input(128 + 2, @m_inst.aliased_output(7))  # ir write to bus
-		@bus.set_aliased_input(128 + 3, @m_inst.aliased_output(9))  # a write to bus
-		@bus.set_aliased_input(128 + 5, @m_inst.aliased_output(11))  # b write to bus
-		@bus.set_aliased_input(128 + 6, @m_inst.aliased_output(13)) # c write to bus
-		@bus.set_aliased_input(128 + 4, @m_inst.aliased_output(16))  # alu write to bus		
-		@bus.set_aliased_input(128 + 7, Simulation::FALSE) #unused		
+		@bus.set_aliased_input(64 + 0, @m_inst.aliased_output(1))  # pc write to bus
+		@bus.set_aliased_input(64 + 1, @m_inst.aliased_output(5))  # ram write to bus
+		@bus.set_aliased_input(64 + 2, @m_inst.aliased_output(7))  # ir write to bus
+		@bus.set_aliased_input(64 + 3, @m_inst.aliased_output(9))  # a write to bus
+		@bus.set_aliased_input(64 + 4, @m_inst.aliased_output(16))  # alu write to bus		
+		@bus.set_aliased_input(64 + 5, @m_inst.aliased_output(11))  # b write to bus
+		@bus.set_aliased_input(64 + 6, @m_inst.aliased_output(13)) # c write to bus
+		@bus.set_aliased_input(64 + 7, Simulation::FALSE) #unused		
 		
 		# connect components to input registers from bus. 
 		# doesn't do anything unless these components have their load signals set
 		(0...8).each do |idx|
-			@a.set_aliased_input(idx, @bus.aliased_output(8 + idx))
-			@b.set_aliased_input(idx, @bus.aliased_output(8 + idx))
-			@c.set_aliased_input(idx, @bus.aliased_output(8 + idx))
-			@tmp.set_aliased_input(idx, @bus.aliased_output(8 + idx))
-			@out.set_aliased_input(idx, @bus.aliased_output(8 + idx))
-			@ir.set_aliased_input(idx, @bus.aliased_output(8 + idx))							
-			@ram.set_aliased_input(idx, @bus.aliased_output(8 + idx))	
-		end		
-		(0...16).each do |idx|
+			@a.set_aliased_input(idx,   @bus.aliased_output(idx))
+			@b.set_aliased_input(idx,   @bus.aliased_output(idx))
+			@c.set_aliased_input(idx,   @bus.aliased_output(idx))
+			@tmp.set_aliased_input(idx, @bus.aliased_output(idx))
+			@out.set_aliased_input(idx, @bus.aliased_output(idx))
+			@ir.set_aliased_input(idx,  @bus.aliased_output(idx))							
+			@ram.set_aliased_input(idx, @bus.aliased_output(idx))	
 			@mar.set_aliased_input(idx, @bus.aliased_output(idx))
-			@pc.set_aliased_input(idx, @bus.aliased_output(idx))
+			@pc.set_aliased_input(idx,  @bus.aliased_output(idx))
 		end
 		
 		# set control signals
-		@pc.set_aliased_input(16, @m_inst.aliased_output(0))   # pc increment
-		@pc.set_aliased_input(17, @m_inst.aliased_output(1))   # pc jump
-		@mar.set_aliased_input(16, @m_inst.aliased_output(3))  # mar load from bus
-		@ram.set_aliased_input(16, @m_inst.aliased_output(4))   # ram load from bus
-		@ir.set_aliased_input(8, @m_inst.aliased_output(6))    # ir load from bus
-		@a.set_aliased_input(8, @m_inst.aliased_output(8))     # a load from bus
-		@b.set_aliased_input(8, @m_inst.aliased_output(10))    # b load from bus
-		@c.set_aliased_input(8, @m_inst.aliased_output(12))    # c load from bus
-		@out.set_aliased_input(8, @m_inst.aliased_output(14))  # out load from bus
-		@tmp.set_aliased_input(8, @m_inst.aliased_output(15))  # tmp load from bus
-		@alu.set_aliased_input(16, @m_inst.aliased_output(17)) # alu operator
-		@alu.set_aliased_input(17, @m_inst.aliased_output(18)) # alu operator
-		@alu.set_aliased_input(18, @m_inst.aliased_output(19)) # alu operator
+		@pc.set_aliased_input(8,   @m_inst.aliased_output(1)) # pc jump
+		@pc.set_aliased_input(9,   @m_inst.aliased_output(0)) # pc increment
+		@pc.set_aliased_input(10,  Simulation::FALSE)         # pc zero
+		@mar.set_aliased_input(8,  @m_inst.aliased_output(3)) # mar load from bus
+		@ram.set_aliased_input(16, @m_inst.aliased_output(4)) # ram load from bus
+		@ir.set_aliased_input(8,   @m_inst.aliased_output(6)) # ir load from bus
+		@a.set_aliased_input(8,    @m_inst.aliased_output(8)) # a load from bus
+		@b.set_aliased_input(8,    @m_inst.aliased_output(10))# b load from bus
+		@c.set_aliased_input(8,    @m_inst.aliased_output(12))# c load from bus
+		@out.set_aliased_input(8,  @m_inst.aliased_output(14))# out load from bus
+		@tmp.set_aliased_input(8,  @m_inst.aliased_output(15))# tmp load from bus
+		@alu.set_aliased_input(16, @m_inst.aliased_output(17))# alu operator
+		@alu.set_aliased_input(17, @m_inst.aliased_output(18))# alu operator
+		@alu.set_aliased_input(18, @m_inst.aliased_output(19))# alu operator
 		
 		# mc early reset, described on pg 163
-		@mc_reset_not = ComponentGroup.build_or_n_gate(@sim, 20)
-		@mc_reset = @sim.register_component(NotGate.new)
-		(0...20).each do |idx|
-			@mc_reset_not.set_aliased_input(idx, @m_inst.aliased_output(idx))
+		@mc_reset = ComponentGroup.build_nor_n_gate(@sim, MC_INST_WIDTH)		
+		(0...MC_INST_WIDTH).each do |idx|
+			@mc_reset.set_aliased_input(idx, @m_inst.aliased_output(idx))
 		end
-		@mc_reset.set_input(0, @mc_reset_not.aliased_output(0))
 		
 		# wire cntr jump to microinst 8
 		(0...4).each do |idx|
 			@m_cntr.set_aliased_input(idx, idx == 0 ? Simulation::TRUE : Simulation::FALSE)
 		end
-		# mc cntr to high
-			
-		# on second step of JNE instruction, jump to 16th micro inst if zero
-		jump = ComponentGroup.build_and_n_gate(@sim, 13)		
-		jump.set_aliased_input(0, @ir.aliased_output(0))
-		jump.set_aliased_input(1, @ir.aliased_output(1))
-		n = @sim.register_component(NotGate.new) ; n.set_input(0,@ir.aliased_output(2))
-		jump.set_aliased_input(2, n)
-		n = @sim.register_component(NotGate.new) ; n.set_input(0,@ir.aliased_output(3))
-		jump.set_aliased_input(3, n)
-		n = @sim.register_component(NotGate.new) ; n.set_input(0,@ir.aliased_output(4))
-		jump.set_aliased_input(4, n)
-		n = @sim.register_component(NotGate.new) ; n.set_input(0,@ir.aliased_output(5))
-		jump.set_aliased_input(5, n)
-		jump.set_aliased_input(6, @ir.aliased_output(6))
-		n = @sim.register_component(NotGate.new) ; n.set_input(0,@ir.aliased_output(7))
-		jump.set_aliased_input(7, n)
+	
+		# Handle Jump for JNE instruction		
+		@mc_jump = ComponentGroup.build_compareset(@sim, "1100001000101")	
 		
-		n = @sim.register_component(NotGate.new) ; n.set_input(0,@m_cntr.aliased_output(0))
-		jump.set_aliased_input(8, n)
-		n = @sim.register_component(NotGate.new) ; n.set_input(0,@m_cntr.aliased_output(1))
-		jump.set_aliased_input(9, n)
-		jump.set_aliased_input(10, @m_cntr.aliased_output(2))
-		n = @sim.register_component(NotGate.new) ; n.set_input(0,@m_cntr.aliased_output(3))
-		jump.set_aliased_input(11, n)
+		#setup microcode counter control		
+		@m_cntr.set_aliased_input(4, @mc_jump.aliased_output(0))      #jump
+		@m_cntr.set_aliased_input(5, Simulation::TRUE)            #enable
+		@m_cntr.set_aliased_input(6, @mc_reset.aliased_output(0)) #zero		
 		
-		jump.set_aliased_input(12, @flags.aliased_output(0))
-		@m_cntr.set_aliased_input(4, jump.aliased_output(0)) #jump
-		@m_cntr.set_aliased_input(5, Simulation::TRUE)  #enable
-		@m_cntr.set_aliased_input(6, @mc_reset)         #zero		
-		
-		# ALU inputs are A and B regs
+		# ALU inputs are A and TMP regs
 		(0...8).each do |idx|
 			@alu.set_aliased_input(idx, @a.aliased_output(idx))
 			@alu.set_aliased_input(8 + idx, @tmp.aliased_output(idx))
@@ -145,17 +120,20 @@ class ComputerSAP2
 		
 		# connect MAR to RAM address
 		(0...8).each do |idx|
-			@ram.set_aliased_input(8 + idx, @mar.aliased_output(8 + idx))
+			@ram.set_aliased_input(8 + idx, @mar.aliased_output(idx))
 		end	
 		
-		# high 4 bits in IR is the op-code
+		# 8-bits in IR is the op-code
 		(0...8).each do |idx|
 			@m_inst.set_aliased_input(idx, @ir.aliased_output(idx))
+			@mc_jump.set_aliased_input(idx, @ir.aliased_output(idx))
 		end
 		# pass micro loop counter into micro instruction
 		(0...4).each do |idx| 
 			@m_inst.set_aliased_input(8 + idx, @m_cntr.aliased_output(idx)) 
+			@mc_jump.set_aliased_input(8 + idx, @m_cntr.aliased_output(idx))
 		end
+		@mc_jump.set_aliased_input(12, @flags.aliased_output(0))
 		
 		# flags
 		(0...8).each do |idx|
@@ -165,7 +143,8 @@ class ComputerSAP2
 		@flags.set_aliased_input(1, @alu.aliased_output(8))
 		@flags.set_aliased_input(2, @alu.aliased_output(0)) # MSB is sign bit
 		@flags.set_aliased_input(3, @m_inst.aliased_output(16)) # save flags on alu write
-
+		
+		
 		print "Computer setup is complete.  Press enter to start processing." if DEBUG
 		STDIN.gets if DEBUG
 		
@@ -249,8 +228,7 @@ class ComputerSAP2
 		end + ")"
 	end
 	
-	def display()		
-		
+	def display()
 		system("clear") || system("cls") 
 		puts "          C O M P U T E R       "
 		puts "=================================="
@@ -258,18 +236,14 @@ class ComputerSAP2
 		
 		puts "  A#{(cntr(8) ? '*' : ' ')}: " + reg_format(@a,true) + "  B#{(cntr(10) ? '*' : ' ')}: " + reg_format(@b,true)
 		puts "  C#{(cntr(12) ? '*' : ' ')}: " + reg_format(@c,true) + "  TMP#{(cntr(15) ? '*' : ' ')}: " + reg_format(@tmp,true)
-		puts "         ALU: " + reg_format(@alu)[0,8] + " (#{alu_op(c[17,3])}) Flags: #{format_flags}"
-		
-		print "BUS : " + reg_format(@bus, true)
-		
+		puts "         ALU: " + reg_format(@alu)[0,8] + " (#{alu_op(c[17,3])}) Flags: #{format_flags}"		
+		print "BUS : " + reg_format(@bus, true)		
 		puts ""
 		puts "MAR#{(cntr(3) ? '*' : ' ')}: " + reg_format(@mar) + "     RAM : " + reg_format(@ram,true)
 		puts ""
 		puts "PC#{(cntr(0) ? '+' : ' ')} :  " + reg_format(@pc, true) 
 		puts "IR#{(cntr(6) ? '*' : ' ')} :    " + format_ir + " cnt " + reg_format(@m_cntr)		
 		puts
-		
-		
 		puts "Microcode Instruction ROM output (next step):"
 		puts "      "
 		puts "   PC Jump: #{c[1]}   PC Write: #{c[2]}"
@@ -282,6 +256,7 @@ class ComputerSAP2
 		puts "  OUT Load: #{c[14]}   TMP Load: #{c[15]}"
 		puts " ALU Write: #{c[16]}     ALU Op: #{c[17,3]} #{alu_op(c[17,3])}"		
 		
+		@pc.display("pc")
 	end
 	
 	def run()
