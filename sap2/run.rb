@@ -50,16 +50,16 @@ class ComputerSAP2
 		# setup bus "outputs": determine which component gets to write to the bus on this cycle
 		(0...8).each do |idx| @bus.set_aliased_input(0 + idx, @pc.aliased_output(idx)) end				
 		(0...8).each do |idx| @bus.set_aliased_input(8 + idx, @ram.aliased_output(idx)) end
-		(0...8).each do |idx| @bus.set_aliased_input(16 + idx, @ir.aliased_output(idx)) end
+		(0...8).each do |idx| @bus.set_aliased_input(16 + idx, Simulation::FALSE) end
 		(0...8).each do |idx| @bus.set_aliased_input(24 + idx, @a.aliased_output(idx)) end
 		(0...8).each do |idx| @bus.set_aliased_input(32 + idx, @alu.aliased_output(idx)) end
 		(0...8).each do |idx| @bus.set_aliased_input(40 + idx, @b.aliased_output(idx)) end
 		(0...8).each do |idx| @bus.set_aliased_input(48 + idx, @c.aliased_output(idx)) end
 		(0...8).each do |idx| @bus.set_aliased_input(56 + idx, Simulation::FALSE) end	
 
-		@bus.set_aliased_input(64 + 0, @m_inst.aliased_output(1))  # pc write to bus
+		@bus.set_aliased_input(64 + 0, @m_inst.aliased_output(2))  # pc write to bus
 		@bus.set_aliased_input(64 + 1, @m_inst.aliased_output(5))  # ram write to bus
-		@bus.set_aliased_input(64 + 2, @m_inst.aliased_output(7))  # ir write to bus
+		@bus.set_aliased_input(64 + 2, Simulation::FALSE)  # ir write to bus
 		@bus.set_aliased_input(64 + 3, @m_inst.aliased_output(9))  # a write to bus
 		@bus.set_aliased_input(64 + 4, @m_inst.aliased_output(16))  # alu write to bus		
 		@bus.set_aliased_input(64 + 5, @m_inst.aliased_output(11))  # b write to bus
