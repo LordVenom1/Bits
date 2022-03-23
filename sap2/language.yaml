@@ -1,7 +1,7 @@
 ---
 - !ruby/object:Operand
   opcode: ADD B
-  desc: Assign (A+B) to A using ALU
+  desc: Assign (A + B) to A using ALU
   addr: 128
   params: []
   microcode:
@@ -10,12 +10,30 @@
   regexp: 
 - !ruby/object:Operand
   opcode: ADD C
-  desc: Assign (A+C) to A using ALU
+  desc: Assign (A + C) to A using ALU
   addr: 129
   params: []
   microcode:
   - C_WRITE | TMP_LOAD
   - ALU_WRITE | ALU_OP_ADD | A_LOAD
+  regexp: 
+- !ruby/object:Operand
+  opcode: SUB B
+  desc: Assign (A - B) to A using ALU
+  addr: 144
+  params: []
+  microcode:
+  - B_WRITE | TMP_LOAD
+  - ALU_WRITE | ALU_OP_SUB | A_LOAD
+  regexp: 
+- !ruby/object:Operand
+  opcode: SUB C
+  desc: Assign (A - C) to A using ALU
+  addr: 145
+  params: []
+  microcode:
+  - C_WRITE | TMP_LOAD
+  - ALU_WRITE | ALU_OP_SUB | A_LOAD
   regexp: 
 - !ruby/object:Operand
   opcode: CMA
@@ -143,6 +161,51 @@
   - RAM_WRITE | C_LOAD | PC_INC
   regexp: 
 - !ruby/object:Operand
+  opcode: INR A
+  desc: Assign A + 1 to A using ALU
+  addr: 60
+  params: []
+  microcode:
+  - A_WRITE | TMP_LOAD
+  - ALU_WRITE | ALU_OP_INC | A_LOAD
+  regexp: 
+- !ruby/object:Operand
+  opcode: INR B
+  desc: Assign B + 1 to B using ALU
+  addr: 4
+  params: []
+  microcode:
+  - B_WRITE | TMP_LOAD
+  - ALU_WRITE | ALU_OP_INC | B_LOAD
+  regexp: 
+- !ruby/object:Operand
+  opcode: INR C
+  desc: Assign C + 1 to C using ALU
+  addr: 12
+  params: []
+  microcode:
+  - C_WRITE | TMP_LOAD
+  - ALU_WRITE | ALU_OP_INC | C_LOAD
+  regexp: 
+- !ruby/object:Operand
+  opcode: DCR A
+  desc: Assign A - 1 to A using ALU
+  addr: 61
+  params: []
+  microcode:
+  - A_WRITE | TMP_LOAD
+  - ALU_WRITE | ALU_OP_DEC | A_LOAD
+  regexp: 
+- !ruby/object:Operand
+  opcode: DCR B
+  desc: Assign B - 1 to B using ALU
+  addr: 5
+  params: []
+  microcode:
+  - B_WRITE | TMP_LOAD
+  - ALU_WRITE | ALU_OP_DEC | B_LOAD
+  regexp: 
+- !ruby/object:Operand
   opcode: DCR C
   desc: Assign C - 1 to C using ALU
   addr: 13
@@ -152,8 +215,18 @@
   - ALU_WRITE | ALU_OP_DEC | C_LOAD
   regexp: 
 - !ruby/object:Operand
+  opcode: JMP
+  desc: Jump to label
+  addr: 195
+  params:
+  - :label
+  microcode:
+  - PC_WRITE | MAR_LOAD | PC_INC
+  - RAM_WRITE | PC_LOAD
+  regexp: 
+- !ruby/object:Operand
   opcode: JNZ
-  desc: Jump if ALU ZERO flag not set
+  desc: Jump to label if ALU ZERO flag not set
   addr: 194
   params:
   - :label
@@ -162,12 +235,52 @@
   - RAM_WRITE | PC_LOAD
   regexp: 
 - !ruby/object:Operand
+  opcode: MOV A,B
+  desc: Assign A to B
+  addr: 120
+  params: []
+  microcode:
+  - B_WRITE | A_LOAD
+  regexp: 
+- !ruby/object:Operand
+  opcode: MOV A,C
+  desc: Assign A to B
+  addr: 121
+  params: []
+  microcode:
+  - C_WRITE | A_LOAD
+  regexp: 
+- !ruby/object:Operand
   opcode: MOV B,A
   desc: Assign A to B
   addr: 71
   params: []
   microcode:
   - A_WRITE | B_LOAD
+  regexp: 
+- !ruby/object:Operand
+  opcode: MOV B,C
+  desc: Assign A to B
+  addr: 65
+  params: []
+  microcode:
+  - C_WRITE | B_LOAD
+  regexp: 
+- !ruby/object:Operand
+  opcode: MOV C,A
+  desc: Assign A to B
+  addr: 79
+  params: []
+  microcode:
+  - A_WRITE | C_LOAD
+  regexp: 
+- !ruby/object:Operand
+  opcode: MOV C,B
+  desc: Assign A to B
+  addr: 72
+  params: []
+  microcode:
+  - B_WRITE | C_LOAD
   regexp: 
 - !ruby/object:Operand
   opcode: LDA
@@ -214,12 +327,41 @@
   - B_WRITE | RAM_LOAD
   regexp: 
 - !ruby/object:Operand
+  opcode: LDC
+  desc: Assign contents of RAM at specified address to C
+  addr: 40
+  params:
+  - :variable
+  microcode:
+  - PC_WRITE | MAR_LOAD
+  - RAM_WRITE | MAR_LOAD | PC_INC
+  - RAM_WRITE | C_LOAD
+  regexp: 
+- !ruby/object:Operand
+  opcode: STC
+  desc: Assign C to specified RAM address
+  addr: 32
+  params:
+  - :variable
+  microcode:
+  - PC_WRITE | MAR_LOAD
+  - RAM_WRITE | MAR_LOAD | PC_INC
+  - C_WRITE | RAM_LOAD
+  regexp: 
+- !ruby/object:Operand
   opcode: OUT
   desc: Assign A to OUTPUT register
   addr: 211
   params: []
   microcode:
   - A_WRITE | OUT_LOAD
+  regexp: 
+- !ruby/object:Operand
+  opcode: NOP
+  desc: No-op
+  addr: 0
+  params: []
+  microcode: []
   regexp: 
 - !ruby/object:Operand
   opcode: HLT

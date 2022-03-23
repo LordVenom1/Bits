@@ -1,0 +1,42 @@
+SET v1 = 96
+SET v2 = 7
+SET backup = 0
+MVI C, 1
+
+; 10 + 10 = 20
+MVI A, 10
+MVI B, 10
+ADD B
+XRI 20
+JNZ ERROR # jump if result != 20
+INR C
+
+; 128 - 96 = 32
+MVI A, 128
+STC backup
+MVI C, 96
+SUB C
+XRI 32
+LDC backup
+JNZ ERROR # jump if result != 32
+INR C
+
+; 96 | 7 = 103
+LDA v1
+LDB v2
+ORA B
+XRI 103
+JNZ ERROR # jump if result != 103
+INR C
+
+JMP DONE
+
+ERROR:
+MOV A,C
+OUT
+HLT
+
+DONE:
+MVI A, 0
+OUT
+HLT

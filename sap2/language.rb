@@ -47,7 +47,7 @@ class Operand
 	include FLAGS	
 	@@list = []
 	
-	attr_reader :addr, :params
+	attr_reader :opcode, :addr, :params
 	def initialize(opcode, desc, addr)
 		@opcode = opcode
 		@desc = desc
@@ -110,10 +110,10 @@ class Operand
 				when :variable
 					cmd << '\s+([a-zA-Z0-9]+)'
 				when :value
-					cmd << '\s*,\s*([0-9]+)'
+					cmd << '\s*,?\s*([0-9]+)'
 			end
 		end
-		puts cmd.join("")
+		# puts cmd.join("")
 		Regexp.new(cmd.join(""))
 	end
 end

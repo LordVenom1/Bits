@@ -15,10 +15,6 @@ jump_addrs = {}
 buffer = ["00000000"] * RAM_HEIGHT
 line_count = 0
 
-Operand::all.each do |op|
-	puts op.parse_re
-end
-
 # process operands into machine code
 File.readlines(ARGV[0]+".src").each do |line|
 	line.strip!
@@ -43,11 +39,10 @@ File.readlines(ARGV[0]+".src").each do |line|
 		parsed = true
 	elsif line =~ /SET (.*) = ([0-9]+)/ # define variable
 		varname, value = $1.upcase, $2.to_i.to_s(2).rjust(8,'0')		
-		variables[varname] = var_addr
-		var_addr += 1
+		variables[varname] = var_addr		
 		buffer[var_addr] = value # set ram address to default value
-	else				
-	
+		var_addr += 1
+	else	
 		Operand::all.each do |op|
 			if line =~ op.parse_re
 				buffer[line_count] = op.decode_addr ; line_count = line_count + 1

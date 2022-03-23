@@ -1,12 +1,15 @@
 require_relative '../simulation.rb'
+require_relative 'language.rb'
 
 $stdout.sync = true
 
-# this is a computer call the "simple as possible (SAP) 1" described in 
-# Digital Computer Electronics 3d edition by Malvino, Brown, starting page 140
+#######################################################################################
+# load the specfied program, then simulate the computer until a HLT is loaded into IR #
+#######################################################################################
 
+# this is a computer modeled after the "simple as possible (SAP) 2" described in 
+# Digital Computer Electronics 3d edition by Malvino, Brown, starting page 173
 class ComputerSAP2
-	MC_INST_WIDTH = 20
 	
 	def initialize(program)
 		@sim = Simulation.new()
@@ -157,7 +160,7 @@ class ComputerSAP2
 	
 	def reg_format(reg, decode = false)
 		bin = (reg.outputs.collect do |o| o.output() ? '1' : '0'  end).join("")
-		decode ? "#{bin} (#{bin.to_i(2).to_s()})" : bin
+		decode ? "#{bin} (#{bin.to_i(2).to_s().center(3,' ')})" : bin
 	end	
 	
 	def cntr(idx)
@@ -187,64 +190,46 @@ class ComputerSAP2
 	
 	def format_flags
 		f = reg_format(@flags)
-		"Z:#{f[0]} OF:#{f[1]} N:#{f[2]}"
+		#"Z:#{f[0]} OF:#{f[1]} N:#{f[2]}"
+		"Z:#{f[0]}"
+	end
+	
+	def format_alu()		
+		bin = (@alu.outputs[0,8].collect do |o| o.output() ? '1' : '0'  end).join("")
+		"#{bin} (#{bin.to_i(2).to_s().center(3,' ')})"
 	end
 	
 	def format_ir()
 		o = reg_format(@ir)
-	    o +  "(" + case o
-			when "00000000"
-				"NOP"
-			when "10000000"
-				"ADD B"
-			when "10000001"
-				"ADD C"
-			when "00111110"
-				"MVI A"
-			when "00000110"
-				"MVI B"
-			when "00001110"
-				"MVI C"
-			when "00001101"
-				"DCR C"
-			when "11000010"
-				"JNZ"
-			when "11010011"
-				"OUT"
-			when "01110110"
-				"HLT"
-			when "00111010"
-				"LDA"
-			when "00110010"
-				"STA"
-			when "00111000"
-				"LDB"
-			when "00110000"
-				"STB"
-			when "01000111"
-				"MOV B,A"
-			else
-				"UNKNOWN"
-		end + ")"
+		
+		Operand::all.each do |op|
+			if (o == op.decode_addr)				
+				return o + " (#{op.opcode})"
+			end
+		end
+		
+		return o + "(UNKNOWN)"		
 	end
 	
 	def display()
 		system("clear") || system("cls") 
+		puts "=================================="
 		puts "          C O M P U T E R       "
 		puts "=================================="
 		c = reg_format(@m_inst)
 		
-		puts "  A#{(cntr(8) ? '*' : ' ')}: " + reg_format(@a,true) + "  B#{(cntr(10) ? '*' : ' ')}: " + reg_format(@b,true)
-		puts "  C#{(cntr(12) ? '*' : ' ')}: " + reg_format(@c,true) + "  TMP#{(cntr(15) ? '*' : ' ')}: " + reg_format(@tmp,true)
-		puts "         ALU: " + reg_format(@alu)[0,8] + " (#{alu_op(c[17,3])}) Flags: #{format_flags}"		
-		print "BUS : " + reg_format(@bus, true)		
+		puts "  A#{(cntr(8) ? '*' : ' ')}: " + reg_format(@a,true) + "      B#{(cntr(10) ? '*' : ' ')}: " + reg_format(@b,true)
+		puts "  C#{(cntr(12) ? '*' : ' ')}: " + reg_format(@c,true) + "    TMP#{(cntr(15) ? '*' : ' ')}: " + reg_format(@tmp,true)
+		puts "ALU : #{format_alu}  Flags : #{format_flags}"				
 		puts ""
-		puts "MAR#{(cntr(3) ? '*' : ' ')}: " + reg_format(@mar) + "     RAM : " + reg_format(@ram,true)
+		puts "MAR#{(cntr(3) ? '*' : ' ')}: " + reg_format(@mar,true) + " -> RAM : " + reg_format(@ram,true)
 		puts ""
-		puts "PC#{(cntr(0) ? '+' : ' ')} :  " + reg_format(@pc, true) 
-		puts "IR#{(cntr(6) ? '*' : ' ')} :    " + format_ir + " cnt " + reg_format(@m_cntr)		
+		puts "BUS : " + reg_format(@bus, true)		
+		puts ""
+		puts "PC#{(cntr(0) ? '+' : ' ')} : " + reg_format(@pc, true) 
+		puts "IR#{(cntr(6) ? '*' : ' ')} : " + format_ir + " cnt " + reg_format(@m_cntr)		
 		puts
-		puts "Microcode Instruction ROM output (next step):"
+		puts "Microcode Instruction ROM output:"
 		puts "      "
 		puts "   PC Jump: #{c[1]}   PC Write: #{c[2]}"
 		puts "  MAR Load: #{c[3]}     PC Inc: #{c[0]}"
@@ -279,7 +264,7 @@ class ComputerSAP2
 end 
 
 if (ARGV.size < 1)
-	puts "Usage: compsap2 <program> [--debug]"
+	puts "Usage: run <program> [--debug]"
 	exit 
 end
 
