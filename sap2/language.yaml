@@ -1,0 +1,230 @@
+---
+- !ruby/object:Operand
+  opcode: ADD B
+  desc: Assign (A+B) to A using ALU
+  addr: 128
+  params: []
+  microcode:
+  - B_WRITE | TMP_LOAD
+  - ALU_WRITE | ALU_OP_ADD | A_LOAD
+  regexp: 
+- !ruby/object:Operand
+  opcode: ADD C
+  desc: Assign (A+C) to A using ALU
+  addr: 129
+  params: []
+  microcode:
+  - C_WRITE | TMP_LOAD
+  - ALU_WRITE | ALU_OP_ADD | A_LOAD
+  regexp: 
+- !ruby/object:Operand
+  opcode: CMA
+  desc: Assign (1's complement of A) to A using ALU
+  addr: 47
+  params: []
+  microcode:
+  - ALU_WRITE | ALU_OP_NOT | A_LOAD
+  regexp: 
+- !ruby/object:Operand
+  opcode: ANA B
+  desc: Assign bitwise (A AND B) to A using ALU
+  addr: 160
+  params: []
+  microcode:
+  - B_WRITE | TMP_LOAD
+  - ALU_WRITE | ALU_OP_AND | A_LOAD
+  regexp: 
+- !ruby/object:Operand
+  opcode: ANA C
+  desc: Assign bitwise (A AND C) to A using ALU
+  addr: 161
+  params: []
+  microcode:
+  - C_WRITE | TMP_LOAD
+  - ALU_WRITE | ALU_OP_AND | A_LOAD
+  regexp: 
+- !ruby/object:Operand
+  opcode: ANI
+  desc: Assign bitwise (A AND immediate value) to A using ALU
+  addr: 230
+  params:
+  - :value
+  microcode:
+  - PC_WRITE | MAR_LOAD
+  - RAM_WRITE | TMP_LOAD | PC_INC
+  - ALU_WRITE | ALU_OP_AND | A_LOAD
+  regexp: 
+- !ruby/object:Operand
+  opcode: ORA B
+  desc: Assign bitwise (A OR B) to A using ALU
+  addr: 176
+  params: []
+  microcode:
+  - B_WRITE | TMP_LOAD
+  - ALU_WRITE | ALU_OP_OR | A_LOAD
+  regexp: 
+- !ruby/object:Operand
+  opcode: ORA C
+  desc: Assign bitwise (A OR C) to A using ALU
+  addr: 177
+  params: []
+  microcode:
+  - C_WRITE | TMP_LOAD
+  - ALU_WRITE | ALU_OP_OR | A_LOAD
+  regexp: 
+- !ruby/object:Operand
+  opcode: ORI
+  desc: Assign bitwise (A OR immediate value) to A using ALU
+  addr: 246
+  params:
+  - :value
+  microcode:
+  - PC_WRITE | MAR_LOAD
+  - RAM_WRITE | TMP_LOAD | PC_INC
+  - ALU_WRITE | ALU_OP_OR | A_LOAD
+  regexp: 
+- !ruby/object:Operand
+  opcode: XRA B
+  desc: Assign bitwise (A XOR B) to A using ALU
+  addr: 168
+  params: []
+  microcode:
+  - B_WRITE | TMP_LOAD
+  - ALU_WRITE | ALU_OP_XOR | A_LOAD
+  regexp: 
+- !ruby/object:Operand
+  opcode: XRA C
+  desc: Assign bitwise (A XOR C) to A using ALU
+  addr: 169
+  params: []
+  microcode:
+  - C_WRITE | TMP_LOAD
+  - ALU_WRITE | ALU_OP_XOR | A_LOAD
+  regexp: 
+- !ruby/object:Operand
+  opcode: XRI
+  desc: Assign bitwise (A XOR immediate value) to A using ALU
+  addr: 238
+  params:
+  - :value
+  microcode:
+  - PC_WRITE | MAR_LOAD
+  - RAM_WRITE | TMP_LOAD | PC_INC
+  - ALU_WRITE | ALU_OP_XOR | A_LOAD
+  regexp: 
+- !ruby/object:Operand
+  opcode: MVI A
+  desc: Assign A reg with immediate value
+  addr: 62
+  params:
+  - :value
+  microcode:
+  - PC_WRITE | MAR_LOAD
+  - RAM_WRITE | A_LOAD | PC_INC
+  regexp: 
+- !ruby/object:Operand
+  opcode: MVI B
+  desc: Assign B reg with immediate value
+  addr: 6
+  params:
+  - :value
+  microcode:
+  - PC_WRITE | MAR_LOAD
+  - RAM_WRITE | B_LOAD | PC_INC
+  regexp: 
+- !ruby/object:Operand
+  opcode: MVI C
+  desc: Assign C reg with immediate value
+  addr: 14
+  params:
+  - :value
+  microcode:
+  - PC_WRITE | MAR_LOAD
+  - RAM_WRITE | C_LOAD | PC_INC
+  regexp: 
+- !ruby/object:Operand
+  opcode: DCR C
+  desc: Assign C - 1 to C using ALU
+  addr: 13
+  params: []
+  microcode:
+  - C_WRITE | TMP_LOAD
+  - ALU_WRITE | ALU_OP_DEC | C_LOAD
+  regexp: 
+- !ruby/object:Operand
+  opcode: JNZ
+  desc: Jump if ALU ZERO flag not set
+  addr: 194
+  params:
+  - :label
+  microcode:
+  - PC_WRITE | MAR_LOAD | PC_INC
+  - RAM_WRITE | PC_LOAD
+  regexp: 
+- !ruby/object:Operand
+  opcode: MOV B,A
+  desc: Assign A to B
+  addr: 71
+  params: []
+  microcode:
+  - A_WRITE | B_LOAD
+  regexp: 
+- !ruby/object:Operand
+  opcode: LDA
+  desc: Assign contents of RAM at specified address to A
+  addr: 58
+  params:
+  - :variable
+  microcode:
+  - PC_WRITE | MAR_LOAD
+  - RAM_WRITE | MAR_LOAD | PC_INC
+  - RAM_WRITE | A_LOAD
+  regexp: 
+- !ruby/object:Operand
+  opcode: STA
+  desc: Assign A to specified RAM address
+  addr: 50
+  params:
+  - :variable
+  microcode:
+  - PC_WRITE | MAR_LOAD
+  - RAM_WRITE | MAR_LOAD | PC_INC
+  - A_WRITE | RAM_LOAD
+  regexp: 
+- !ruby/object:Operand
+  opcode: LDB
+  desc: Assign contents of RAM at specified address to B
+  addr: 56
+  params:
+  - :variable
+  microcode:
+  - PC_WRITE | MAR_LOAD
+  - RAM_WRITE | MAR_LOAD | PC_INC
+  - RAM_WRITE | B_LOAD
+  regexp: 
+- !ruby/object:Operand
+  opcode: STB
+  desc: Assign B to specified RAM address
+  addr: 48
+  params:
+  - :variable
+  microcode:
+  - PC_WRITE | MAR_LOAD
+  - RAM_WRITE | MAR_LOAD | PC_INC
+  - B_WRITE | RAM_LOAD
+  regexp: 
+- !ruby/object:Operand
+  opcode: OUT
+  desc: Assign A to OUTPUT register
+  addr: 211
+  params: []
+  microcode:
+  - A_WRITE | OUT_LOAD
+  regexp: 
+- !ruby/object:Operand
+  opcode: HLT
+  desc: HALT program operation
+  addr: 118
+  params: []
+  microcode: []
+  regexp: 
