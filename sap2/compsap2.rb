@@ -255,8 +255,6 @@ class ComputerSAP2
 		puts "    C Load: #{c[12]}    C Write: #{c[13]}"
 		puts "  OUT Load: #{c[14]}   TMP Load: #{c[15]}"
 		puts " ALU Write: #{c[16]}     ALU Op: #{c[17,3]} #{alu_op(c[17,3])}"		
-		
-		@pc.display("pc")
 	end
 	
 	def run()

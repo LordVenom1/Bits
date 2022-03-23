@@ -1,13 +1,15 @@
 SET swap = 1
-MVI A, 1
-MVI B, 1
-MVI C, 11
+MVI A, 1 # set A to 1 - initial fib value
+MVI B, 1 # set B to 1 - initial fib value
+MVI C, 11 # set C to 11 - counter
 MORE:
-ADD B
-OUT
-STB swap
-MOV B,A
-LDA swap
-DCR C
-JNZ MORE
-HLT
+ADD B # add A+B and save in A
+OUT # send result to OUTPUT
+# A contains latest value, B contains next oldest value
+# swap A and B registers b/c ALU output always overwrites A
+STB swap # save B register to RAM
+MOV B,A  # move A to B
+LDA swap # load A register from RAM
+DCR C    # C - 1 > C
+JNZ MORE # process again until C reaches 0
+HLT      # end program
