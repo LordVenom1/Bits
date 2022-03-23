@@ -1,8 +1,8 @@
 require 'yaml'
 
-#########################################################################
-# represent machine language as Operands in global OPERANDS variable
-#########################################################################
+##########################################
+# represent machine language as Operands #
+##########################################
 
 MC_INST_WIDTH = 20
 MC_OPCODE_SIZE = 8

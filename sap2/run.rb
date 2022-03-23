@@ -3,9 +3,9 @@ require_relative 'language.rb'
 
 $stdout.sync = true
 
-#######################################################################################
-# load the specfied program, then simulate the computer until a HLT is loaded into IR #
-#######################################################################################
+###########################################################################################
+# load the specfied program, then simulate the computer until a HLT is loaded into the IR #
+###########################################################################################
 
 # this is a computer modeled after the "simple as possible (SAP) 2" described in 
 # Digital Computer Electronics 3d edition by Malvino, Brown, starting page 173
@@ -50,7 +50,7 @@ class ComputerSAP2
 		# setup bus "outputs": determine which component gets to write to the bus on this cycle
 		(0...8).each do |idx| @bus.set_aliased_input(0 + idx, @pc.aliased_output(idx)) end				
 		(0...8).each do |idx| @bus.set_aliased_input(8 + idx, @ram.aliased_output(idx)) end
-		(0...8).each do |idx| @bus.set_aliased_input(16 + 4 + idx, idx < 4 ? @ir.aliased_output(idx + 4) : Simulation::FALSE) end
+		(0...8).each do |idx| @bus.set_aliased_input(16 + idx, @ir.aliased_output(idx)) end
 		(0...8).each do |idx| @bus.set_aliased_input(24 + idx, @a.aliased_output(idx)) end
 		(0...8).each do |idx| @bus.set_aliased_input(32 + idx, @alu.aliased_output(idx)) end
 		(0...8).each do |idx| @bus.set_aliased_input(40 + idx, @b.aliased_output(idx)) end
