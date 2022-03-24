@@ -46,6 +46,7 @@ Diagram of Project Components |  Diagram of Computer Architecture
 - This starts a chain of .output calls until a stable value is reached (either a previous DataLatch value or a constant True or False component)
 - DataLatches are updated in a two-phase approach so that some outputs don't start changing mid-clock pulse and affecting other DataLatches prematurely.
 - All other higher-level components are made up of combinations of these low-level components, with build_* factory functions used to help set them up.
+- All intermediate "binary" files are not stored in actual binary, but as text 1's and 0's for ease of understanding and modification.
 
 ## Differences from SAP-2
 - In SAP-2, certain components (Bus, PC, MAR) were labeled as 16-bit in a diagram in order to address the 64k RAM.  I didn't need such a large memory, so these components remain 8-bit.
