@@ -29,7 +29,7 @@ Diagram of Project Components |  Diagram of Computer Architecture
   [YouTube - DerULF1 - 8-bit breadboard CPU](https://www.youtube.com/playlist?list=PL5-Ar_CvItgaP27eT_C7MnCiubkyaEqF0)  
   [YouTube - Minecraft - Programmable 8-bit computer](https://youtu.be/ydd6l3iYOZE)  
   [Github - EnigmaCurry/SAP](https://github.com/EnigmaCurry/SAP)  
-- While building a physical breadboard computer is an added challenge, simulating it in software is still a rewarding project, and is still very much analogous to the way 1980's-era computers operated.
+- While building a physical breadboard computer is an added challenge, simulating one in software is still a rewarding project, and is still very much analogous to the way 1980's-era computers operated.  Electrical engineering considerations are replaced with that of software design.
 
 ## Goals:
 - "Simulate" a computer in software using only a small set of "physical" gates.  These gates are implemented in native code, outside the simulation.
