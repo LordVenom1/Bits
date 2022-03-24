@@ -2,10 +2,7 @@
 This is a project to simulate a rudimentary 8-bit computer in software, using Combinatorial logic gates and latches.
 The design is a modification of the "Simple as possible 2" (SAP-2), described in *Digital Computer Electronics 3rd Edition*.
 
-![Diagram of Project Architecture](/images/software_arch.png?raw=true "Project Architecture")  
-
-![Diagram of Computer Architecture](/images/sap2_arch.png?raw=true "SAP-2-like Computer Architecture")  
-
+Example of the computer sending the 8-bit Fibonacci sequence to output:
 ![Computer simulating Fibonacci](/images/sap2fib.gif?raw=true "Computer Operation")  
 
 ## Getting started:
@@ -16,6 +13,10 @@ The design is a modification of the "Simple as possible 2" (SAP-2), described in
 * Refer to *test.src* to understand what code is being executed.
 * Make changes to *test.src*, run *"compile.rb test"*, and then run *"run.rb test --debug"* again to see your new program in action.
 * To add a new instruction, modify *"write_language.rb"* as-needed, run it to produce a new *language.yaml*, then run *"write_microcode.rb"* to produce a new *sap2.rom* that contains your new instruction.
+
+Diagram of Project Components |  Diagram of Computer Architecture 
+------------------------------|-----------------------------------
+![Diagram of Project Architecture](/images/software_arch.png?raw=true "Project Architecture")|![Diagram of Computer Architecture](/images/sap2_arch.png?raw=true "SAP-2-like Computer Architecture")  
 
 ## References:
 - *Digital Computer Electronics 3rd Edition - Malvino and Brown*
@@ -30,7 +31,6 @@ out of gates and latches has stuck with me, as it has for many other people:
   [YouTube - DerULF1 - 8-bit breadboard CPU](https://www.youtube.com/playlist?list=PL5-Ar_CvItgaP27eT_C7MnCiubkyaEqF0)  
   [YouTube - Minecraft - Programmable 8-bit computer](https://youtu.be/ydd6l3iYOZE)  
   [Github - EnigmaCurry/SAP](https://github.com/EnigmaCurry/SAP)  
-- This project is an attempt to build a simple 8-bit computer, but by simulating the execution in code, instead of on a breadboard.
 
 ## Goals:
 - "Simulate" a computer in software using only a small set of "Physical" gates.
@@ -59,4 +59,4 @@ out of gates and latches has stuck with me, as it has for many other people:
 - 7 instructions are not implemented (IN, JM, JZ, RAL, RAR, CALL, RET) and some additional instructions were added (LDB,STB,LDC,STC) at unused addresses.
 
 ## Outcome:
-- The goals of the project are met.  An SAP-2-like computer can be simulated to run a simple program to generate an 8-bit Fibonacci sequence.
+- The goals of the project are met.  The "SAP-2"-like computer simulation is working and can generate the 8-bit Fibonacci sequence to completion.
