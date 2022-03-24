@@ -3,16 +3,16 @@ This is a project to simulate a 8-bit computer in software, built up from Combin
 The design is a modification of the "Simple as possible 2" (SAP-2), described in *Digital Computer Electronics 3rd Edition*.
 
 Example of the computer generating the 8-bit Fibonacci sequence:  
-![Computer simulating Fibonacci](/images/sap2fib.gif?raw=true "Computer Operation")  
+![Computer simulating Fibonacci](/images/sap2fib2.gif?raw=true "Computer Operation")  
 
 ## Getting started:
-* Download this project to a local directory: *git clone https://github.com/LordVenom1/Bits.git*
+* Download this project to a local directory: `git clone https://github.com/LordVenom1/Bits.git`
 * Download and install a recent version ruby, if not already installed.
-* Run *"test_components.rb"* to complete the test suite
-* Enter the "sap2" subdirectory and run *"run.rb test --debug"* and/or *"run.rb fib --debug"*.
+* Run `test_components.rb` to complete the test suite
+* Enter the "sap2" subdirectory and run `run.rb test --debug`and/or `run.rb fib --debug`.
 * Refer to *test.src* or *fib.src* to understand what code is being executed.
-* If you make changes to *test.src*: run *"compile.rb test"*, and then run *"run.rb test --debug"* again to see your new program in action.
-* To add a new instruction, modify *"write_language.rb"* as-needed, run it to produce a new *language.yaml*, then run *"write_microcode.rb"* to produce a new *sap2.rom* that includes your new instruction.
+* If you make changes to *test.src*: run `compile.rb test`, and then run `run.rb test --debug` again to see your new program in action.
+* To add a new instruction, modify *write_language.rb* as-needed, run it to produce a new *language.yaml*, then run `write_microcode.rb` to produce a new *sap2.rom* that includes your new instruction.
 
 Diagram of Project Components |  Diagram of Computer Architecture 
 ------------------------------|-----------------------------------
@@ -25,7 +25,7 @@ Diagram of Project Components |  Diagram of Computer Architecture
 ## Background:
 - Since taking an electrical engineering course in college, the experience of building a breadboard computer out of gates and latches has stuck with me, as it has for many other people:  
   [YouTube - Minecraft - Programmable 8-bit computer](https://www.youtube.com/watch?v=ydd6l3iYOZE)  
-  [![YouTube - Michael Roberts - Minecraft - Programmable 8-bit computer](/images/youtube_ydd6l3iYOZE.png?raw=true)](https://www.youtube.com/watch?v=ydd6l3iYOZE)  
+  [![YouTube - Michael Roberts - Minecraft - Programmable 8-bit computer](/images/youtube_ydd6l3iYOZE2.png?raw=true)](https://www.youtube.com/watch?v=ydd6l3iYOZE)  
   [YouTube - James Bates - Ben Eater inspired 8-bit breadboard cpu](https://www.youtube.com/playlist?list=PL_i7PfWMNYobSPpg1_voiDe6qBcjvuVui)  
   [YouTube - DerULF1 - 8-bit breadboard CPU](https://www.youtube.com/playlist?list=PL5-Ar_CvItgaP27eT_C7MnCiubkyaEqF0)      
   [Github - EnigmaCurry/SAP](https://github.com/EnigmaCurry/SAP)  
@@ -48,15 +48,17 @@ Diagram of Project Components |  Diagram of Computer Architecture
 - All other higher-level components are made up of combinations of these low-level components, with build_* factory functions used to help set them up.
 - All intermediate "binary" files are not stored in actual binary, but as text 1's and 0's for ease of understanding and modification.
 
-## Differences from SAP-2
-- In SAP-2, certain components (Bus, PC, MAR) were labeled as 16-bit in a diagram in order to address the 64k RAM.  I didn't need such a large memory, so these components remain 8-bit.
-- The RAM was described as 64K, with the first 2K pre-loaded with a "Monitor" program, which is a simple operating system.  However, the code for the monitor wasn't provided, so programs for our machine just fill the entire 2k RAM and start at address 0.
+### Differences from SAP-2
+- In SAP-2, certain components (Bus, PC, MAR) were 16-bit to address the larger 64k RAM.  I didn't need such a large memory, so these components remain 8-bit.
+- The RAM was described as 64K, with the first 2K pre-loaded with a "Monitor" program (a precursor to an operating system).  However, the code for the monitor wasn't provided, so programs for our machine just fill the entire 2k RAM and start at address 0.
 - The microcode for SAP-2 was also not provided, so the microcode was completely generated from scratch.
-- The fetch cycle was three states (Address, Increment, Memory).  Incrementing the PC was combined with the memory step to save a state.
-- A number of inputs and outputs were described, including handing serial data.  These were not implemented in favor of a single OUT register that displays values sent there to STDOUT.
+- The SAP-2 fetch cycle had three states (Address, Increment, Memory).  Incrementing the PC has been combined with the memory step to save a state.
+- A number of input and output ports were described, including handing serial data.  These were not implemented in favor of a single OUT register that displays values sent there to STDOUT.
 - The ROM and RAM data are being loaded directly as the components are built, and not loaded within the simulation.
-- The implementation of the jump instructions wasn't described in detail.  My solution was to watch for the JNE opcode in the IR and have the microcode counter jump away based on the zero flag.
+- The implementation of the jump instructions wasn't described in detail.  My solution was to connect the jump pin on the microcode counter to a circuit that is true when the IR contains the JNE opcode and the zero flag is false.
 - 7 instructions are not implemented (IN, JM, JZ, RAL, RAR, CALL, RET) and some additional instructions were added (LDB,STB,LDC,STC) at unused addresses.
+- The computers in *Digital Computer Electronics 3rd Edition* use tri-state buffers to connect and disconnect components to the bus.  I used a set of multiplexors to accomplish the same thing without requiring another 'physical' component.
 
 ## Outcome:
 - The goals of the project are met.  The "SAP-2"-like computer simulation is working and can generate the 8-bit Fibonacci sequence to completion.
+- Next steps could include adding further details to the "SAP-2" or starting on the "SAP-3", which has more instructions, more general-purpose registers, and a proper stack pointer, which would allow for calling and returning from subroutines.
