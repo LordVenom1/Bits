@@ -226,8 +226,8 @@ class ComputerSAP2
 		puts ""
 		puts "BUS : " + reg_format(@bus, true)		
 		puts ""
-		puts "PC#{(cntr(0) ? '+' : ' ')} : " + reg_format(@pc, true) 
-		puts "IR#{(cntr(6) ? '*' : ' ')} : " + format_ir + " cnt " + reg_format(@m_cntr)		
+		puts " PC#{(cntr(0) ? '+' : ' ')}: " + reg_format(@pc, true) 
+		puts " IR#{(cntr(6) ? '*' : ' ')}: " + format_ir + " cnt " + reg_format(@m_cntr)		
 		puts
 		puts "Microcode Instruction ROM output:"		
 		puts "   PC Jump: #{c[1]}   PC Write: #{c[2]}"
