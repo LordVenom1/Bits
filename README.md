@@ -1,6 +1,6 @@
 # Bits - Ruby
-This is a personal project to simulate a simple 8-bit computer in software, at the level of basic Combinatorial logic gates and latches.
-The implemented computer resembles the "Simple as possible 2" (SAP-2), described in *Digital Computer Electronics 3rd Edition*.
+This is a personal project to simulate a rudimentary 8-bit computer in software, using Combinatorial logic gates and latches.
+The implemented computer is a modification of the "Simple as possible 2" (SAP-2), described in *Digital Computer Electronics 3rd Edition*.
 
 Diagram of Project Components |  Diagram of Computer Architecture
 ------------------------------|-----------------------------------
