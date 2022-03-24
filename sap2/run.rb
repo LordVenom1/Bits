@@ -229,8 +229,7 @@ class ComputerSAP2
 		puts "PC#{(cntr(0) ? '+' : ' ')} : " + reg_format(@pc, true) 
 		puts "IR#{(cntr(6) ? '*' : ' ')} : " + format_ir + " cnt " + reg_format(@m_cntr)		
 		puts
-		puts "Microcode Instruction ROM output:"
-		puts "      "
+		puts "Microcode Instruction ROM output:"		
 		puts "   PC Jump: #{c[1]}   PC Write: #{c[2]}"
 		puts "  MAR Load: #{c[3]}     PC Inc: #{c[0]}"
 		puts "  RAM Load: #{c[4]}  RAM Write: #{c[5]}"
@@ -239,12 +238,14 @@ class ComputerSAP2
 		puts "    B Load: #{c[10]}    B Write: #{c[11]}"
 		puts "    C Load: #{c[12]}    C Write: #{c[13]}"
 		puts "  OUT Load: #{c[14]}   TMP Load: #{c[15]}"
-		puts " ALU Write: #{c[16]}     ALU Op: #{c[17,3]} #{alu_op(c[17,3])}"		
+		puts " ALU Write: #{c[16]}     ALU Op: #{c[17,3]} #{alu_op(c[17,3])}"
+		puts ""
 	end
 	
 	def run()
 	
-		display() if DEBUG	
+		display() if DEBUG
+		puts "Press ENTER to pulse the clock" if DEBUG
 		STDIN.gets if DEBUG
 		
 		while true do 						
@@ -258,6 +259,7 @@ class ComputerSAP2
 				break
 			end
 			
+			puts "Press ENTER to pulse the clock" if DEBUG
 			STDIN.gets if DEBUG
 		end
 	end

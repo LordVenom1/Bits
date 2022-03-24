@@ -7,7 +7,7 @@ Diagram of Project Components |  Diagram of Computer Architecture
 ![Diagram of Project Architecture](/images/software_arch.png?raw=true "Project Architecture")|![Diagram of Computer Architecture](/images/sap2_arch.png?raw=true "SAP-2-like Computer Architecture")
 
 ## Getting started:
-* Download this project to a local directory
+* Download this project to a local directory: git clone https://github.com/LordVenom1/Bits.git
 * Download and install a recent version ruby, if not already installed.
 * Run *"test_components.rb"* to complete the test suite
 * Enter the "sap2" subdirectory and run *"run.rb test --debug"* and/or *"run.rb fib --debug"*. Press 'enter' repeatedly to watch the computer in operation.
