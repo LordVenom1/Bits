@@ -2,9 +2,9 @@
 This is a personal project to simulate a rudimentary 8-bit computer in software, using Combinatorial logic gates and latches.
 The implemented computer is a modification of the "Simple as possible 2" (SAP-2), described in *Digital Computer Electronics 3rd Edition*.
 
-Diagram of Project Components |  Diagram of Computer Architecture
-------------------------------|-----------------------------------
-![Diagram of Project Architecture](/images/software_arch.png?raw=true "Project Architecture")|![Diagram of Computer Architecture](/images/sap2_arch.png?raw=true "SAP-2-like Computer Architecture")
+Diagram of Project Components |  Diagram of Computer Architecture | Operation - Fibonacci
+------------------------------|-----------------------------------|----------------------
+![Diagram of Project Architecture](/images/software_arch.png?raw=true "Project Architecture")|![Diagram of Computer Architecture](/images/sap2_arch.png?raw=true "SAP-2-like Computer Architecture")|![Computer simulating Fibonacci](/images/sap2fib.gif?raw=true "Computer Operation")
 
 ## Getting started:
 * Download this project to a local directory: git clone https://github.com/LordVenom1/Bits.git
