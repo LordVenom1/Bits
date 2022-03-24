@@ -24,7 +24,7 @@ Diagram of Project Components |  Diagram of Computer Architecture
 
 ## Background:
 - Since taking an electrical engineering course in college, the experience of building a breadboard computer out of gates and latches has stuck with me, as it has for many other people:  
-  [YouTube - Minecraft - Programmable 8-bit computer](/images/youtube_ydd6l3iYOZE.png?raw=true)](https://www.youtube.com/watch?v=ydd6l3iYOZE)  
+  [YouTube - Minecraft - Programmable 8-bit computer](https://www.youtube.com/watch?v=ydd6l3iYOZE)  
   [![YouTube - Michael Roberts - Minecraft - Programmable 8-bit computer](/images/youtube_ydd6l3iYOZE.png?raw=true)](https://www.youtube.com/watch?v=ydd6l3iYOZE)  
   [YouTube - James Bates - Ben Eater inspired 8-bit breadboard cpu](https://www.youtube.com/playlist?list=PL_i7PfWMNYobSPpg1_voiDe6qBcjvuVui)  
   [YouTube - DerULF1 - 8-bit breadboard CPU](https://www.youtube.com/playlist?list=PL5-Ar_CvItgaP27eT_C7MnCiubkyaEqF0)      
