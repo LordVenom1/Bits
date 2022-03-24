@@ -2,7 +2,7 @@
 This is a project to simulate a 8-bit computer in software, built up from Combinatorial logic gates and latches implemented in native code.
 The design is a modification of the "Simple as possible 2" (SAP-2), described in *Digital Computer Electronics 3rd Edition*.
 
-Example of the computer generating the 8-bit Fibonacci sequence:
+Example of the computer generating the 8-bit Fibonacci sequence:  
 ![Computer simulating Fibonacci](/images/sap2fib.gif?raw=true "Computer Operation")  
 
 ## Getting started:
