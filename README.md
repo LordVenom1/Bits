@@ -1,16 +1,16 @@
-# Bits - Ruby
-This is a personal project to simulate a rudimentary 8-bit computer in software, using Combinatorial logic gates and latches.
-The implemented computer is a modification of the "Simple as possible 2" (SAP-2), described in *Digital Computer Electronics 3rd Edition*.
+# Bits 8-bit Computer Simulation
+This is a project to simulate a rudimentary 8-bit computer in software, using Combinatorial logic gates and latches.
+The design is a modification of the "Simple as possible 2" (SAP-2), described in *Digital Computer Electronics 3rd Edition*.
 
 Diagram of Project Components |  Diagram of Computer Architecture | Operation - Fibonacci
 ------------------------------|-----------------------------------|----------------------
 ![Diagram of Project Architecture](/images/software_arch.png?raw=true "Project Architecture")|![Diagram of Computer Architecture](/images/sap2_arch.png?raw=true "SAP-2-like Computer Architecture")|![Computer simulating Fibonacci](/images/sap2fib.gif?raw=true "Computer Operation")
 
 ## Getting started:
-* Download this project to a local directory: git clone https://github.com/LordVenom1/Bits.git
+* Download this project to a local directory: *git clone https://github.com/LordVenom1/Bits.git*
 * Download and install a recent version ruby, if not already installed.
 * Run *"test_components.rb"* to complete the test suite
-* Enter the "sap2" subdirectory and run *"run.rb test --debug"* and/or *"run.rb fib --debug"*. Press 'enter' repeatedly to watch the computer in operation.
+* Enter the "sap2" subdirectory and run *"run.rb test --debug"* and/or *"run.rb fib --debug"*.
 * Refer to *test.src* to understand what code is being executed.
 * Make changes to *test.src*, run *"compile.rb test"*, and then run *"run.rb test --debug"* again to see your new program in action.
 * To add a new instruction, modify *"write_language.rb"* as-needed, run it to produce a new *language.yaml*, then run *"write_microcode.rb"* to produce a new *sap2.rom* that contains your new instruction.
